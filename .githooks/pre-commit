@@ -1,0 +1,16 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "[pre-commit] Running machine-state audit..."
+
+if ! command -v just >/dev/null 2>&1; then
+	echo "[pre-commit] ERROR: just is required. Run start.sh first." >&2
+	exit 1
+fi
+
+just audit
+
+echo "[pre-commit] Audit passed."

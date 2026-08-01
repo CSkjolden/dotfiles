@@ -1,0 +1,11 @@
+snapshot.Brewfile
+.DS_Store
+
+# Never commit machine-local or secret material
+*.local
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*

@@ -1,24 +1,36 @@
 #!/usr/bin/env zsh
+#
+# brewfile.sh - manage Homebrew packages from per-profile Brewfiles.
+#
+# Profiles are files in brewfiles/<name>.Brewfile. Select them with the
+# HOMEBREW_BUNDLE_PROFILES env var (comma-separated, default: core).
+#
+# Usage:
+#   brewfile.sh [install|check|list ...]   Act on the selected profiles
+#   brewfile.sh profiles                    List installable profiles
+#   brewfile.sh audit                       Check installed packages are in a profile
+#   brewfile.sh dump [--file PATH]          Snapshot installed packages to a Brewfile
+#
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 profiles_dir="$script_dir/brewfiles"
 audit_only_prefix="inventory."
 profiles="${HOMEBREW_BUNDLE_PROFILES:-core}"
-IFS=, read -rA profile_list <<< "$profiles"
+# Split the comma-separated profile names into an array.
+profile_list=("${(@s:,:)profiles}")
 
 resolve_brewfile_path() {
 	local profile="$1"
 	echo "$profiles_dir/${profile}.Brewfile"
 }
 
+# Concatenate the chosen profile Brewfiles into one file, dropping duplicates.
 build_bundle_file() {
 	local output_file="$1"
 	local dedupe_file="$2"
 	local mode="$3"
-	shift
-	shift
-	shift
+	shift 3
 	local selected_profile
 	local brewfile_path
 	local audit_only_path
@@ -44,6 +56,7 @@ build_bundle_file() {
 		cat "$brewfile_path" >> "$output_file"
 	done
 
+	# Remove repeated lines and duplicate packages (same type + name).
 	awk '
 		function maybe_print() {
 			if (line == "") {
@@ -82,53 +95,33 @@ build_bundle_file() {
 	mv "$dedupe_file" "$output_file"
 }
 
-discover_install_profiles() {
-	local profile_file
-	local base_name
-	local profile_name
+# List profile names found in brewfiles/*.Brewfile, skipping the snapshot file.
+# Scope "install" (default) also skips inventory.* (audit-only) profiles.
+discover_profiles() {
+	local scope="${1:-install}"
+	local profile_file base_name profile_name
 	local -a discovered=()
 
+	# (N) = don't error when nothing matches; :t = keep just the file name.
 	for profile_file in "$profiles_dir"/*.Brewfile(N); do
 		base_name="${profile_file:t}"
 		profile_name="${base_name%.Brewfile}"
 		[[ "$profile_name" == snapshot ]] && continue
-		[[ "$profile_name" == ${audit_only_prefix}* ]] && continue
+		[[ "$scope" == install && "$profile_name" == ${audit_only_prefix}* ]] && continue
 		discovered+=("$profile_name")
 	done
 
 	printf '%s\n' "${discovered[@]}"
 }
 
-discover_audit_profiles() {
-	local profile_file
-	local base_name
-	local profile_name
-	local -a discovered=()
-
-	for profile_file in "$profiles_dir"/*.Brewfile(N); do
-		base_name="${profile_file:t}"
-		profile_name="${base_name%.Brewfile}"
-		[[ "$profile_name" == snapshot ]] && continue
-		discovered+=("$profile_name")
-	done
-
-	printf '%s\n' "${discovered[@]}"
-}
-
+# Warn if any installed package is not represented in the profile Brewfiles.
 run_profile_audit() {
 	local installed_snapshot profile_snapshot profile_dedupe_tmp
 	local installed_entries profile_entries
-	local all_profiles
+	local all_profiles missing_entries
 	local -a all_profiles_array
-	local missing_entries
-	local exit_code
 
-	installed_snapshot="$(mktemp "${TMPDIR:-/tmp}/brewfile.installed.XXXXXX")"
-	profile_snapshot="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.XXXXXX")"
-	profile_dedupe_tmp="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.dedupe.XXXXXX")"
-	installed_entries="$(mktemp "${TMPDIR:-/tmp}/brewfile.installed.entries.XXXXXX")"
-	profile_entries="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.entries.XXXXXX")"
-
+	# Reduce a Brewfile to a sorted list of "type:name" entries for comparison.
 	normalize_entries() {
 		local input_file="$1"
 		awk '
@@ -147,76 +140,73 @@ run_profile_audit() {
 		' "$input_file" | LC_ALL=C sort -u
 	}
 
-	all_profiles="$(discover_audit_profiles)"
-	all_profiles_array=("${(@f)all_profiles}")
-	build_bundle_file "$profile_snapshot" "$profile_dedupe_tmp" audit "${all_profiles_array[@]}" || {
-		exit_code=$?
+	installed_snapshot="$(mktemp "${TMPDIR:-/tmp}/brewfile.installed.XXXXXX")"
+	profile_snapshot="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.XXXXXX")"
+	profile_dedupe_tmp="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.dedupe.XXXXXX")"
+	installed_entries="$(mktemp "${TMPDIR:-/tmp}/brewfile.installed.entries.XXXXXX")"
+	profile_entries="$(mktemp "${TMPDIR:-/tmp}/brewfile.profiles.entries.XXXXXX")"
+
+	{
+		all_profiles="$(discover_profiles audit)"
+		# (@f) splits the newline-separated names into an array.
+		all_profiles_array=("${(@f)all_profiles}")
+		build_bundle_file "$profile_snapshot" "$profile_dedupe_tmp" audit "${all_profiles_array[@]}" || return
+
+		brew bundle dump --file "$installed_snapshot" --force --no-describe >/dev/null || return
+
+		normalize_entries "$installed_snapshot" > "$installed_entries"
+		normalize_entries "$profile_snapshot" > "$profile_entries"
+		missing_entries="$(comm -23 "$installed_entries" "$profile_entries" | grep -Ev '^(brew:rust)$' || true)"
+
+		if [[ -n "$missing_entries" ]]; then
+			echo "Installed entries missing from profile files:" >&2
+			printf '%s\n' "$missing_entries" >&2
+			return 2
+		fi
+
+		echo "All installed Brew Bundle entries are represented in profiles." >&2
+	} always {
 		rm -f "$installed_snapshot" "$profile_snapshot" "$profile_dedupe_tmp" "$installed_entries" "$profile_entries"
-		return "$exit_code"
 	}
-
-	brew bundle dump --file "$installed_snapshot" --force --no-describe >/dev/null || {
-		exit_code=$?
-		rm -f "$installed_snapshot" "$profile_snapshot" "$profile_dedupe_tmp" "$installed_entries" "$profile_entries"
-		return "$exit_code"
-	}
-
-	normalize_entries "$installed_snapshot" > "$installed_entries"
-	normalize_entries "$profile_snapshot" > "$profile_entries"
-	missing_entries="$(comm -23 "$installed_entries" "$profile_entries" | grep -Ev '^(brew:rust)$' || true)"
-
-	if [[ -n "$missing_entries" ]]; then
-		echo "Installed entries missing from profile files:" >&2
-		printf '%s\n' "$missing_entries" >&2
-		rm -f "$installed_snapshot" "$profile_snapshot" "$profile_dedupe_tmp" "$installed_entries" "$profile_entries"
-		return 2
-	fi
-
-	echo "All installed Brew Bundle entries are represented in profiles." >&2
-	rm -f "$installed_snapshot" "$profile_snapshot" "$profile_dedupe_tmp" "$installed_entries" "$profile_entries"
 }
 
-if [[ "${1:-}" == dump || "${1:-}" == snapshot ]]; then
-	shift
-	snapshot_file="$profiles_dir/snapshot.Brewfile"
-	while [[ $# -gt 0 ]]; do
-		case "$1" in
-			--file)
-				snapshot_file="$2"
-				shift 2
-				;;
-			*)
-				break
-				;;
-		esac
-	done
+# Route to the requested command; anything else installs the selected profiles.
+case "${1:-}" in
+	dump|snapshot)
+		shift
+		snapshot_file="$profiles_dir/snapshot.Brewfile"
+		while [[ $# -gt 0 ]]; do
+			case "$1" in
+				--file)
+					snapshot_file="$2"
+					shift 2
+					;;
+				*)
+					break
+					;;
+			esac
+		done
+		exec brew bundle dump --file "$snapshot_file" -f "$@"
+		;;
 
-	exec brew bundle dump --file "$snapshot_file" -f "$@"
-fi
+	audit|check-profiles)
+		run_profile_audit
+		exit $?
+		;;
 
-if [[ "${1:-}" == audit || "${1:-}" == check-profiles ]]; then
-	shift
-	run_profile_audit "$@"
-	exit $?
-fi
+	profiles|list-profiles)
+		discover_profiles
+		;;
 
-if [[ "${1:-}" == profiles || "${1:-}" == list-profiles ]]; then
-	shift
-	discover_install_profiles
-	exit 0
-fi
+	*)
+		# Default: build one combined Brewfile and hand it to `brew bundle`.
+		tmp_brewfile="$(mktemp "${TMPDIR:-/tmp}/brewfile.XXXXXX")"
+		tmp_dedupe="$(mktemp "${TMPDIR:-/tmp}/brewfile.dedupe.XXXXXX")"
+		trap 'rm -f "$tmp_brewfile" "$tmp_dedupe"' EXIT
 
-tmp_brewfile="$(mktemp "${TMPDIR:-/tmp}/brewfile.XXXXXX")"
-tmp_dedupe="$(mktemp "${TMPDIR:-/tmp}/brewfile.dedupe.XXXXXX")"
-cleanup() {
-	rm -f "$tmp_brewfile" "$tmp_dedupe"
-}
-trap cleanup EXIT
+		build_bundle_file "$tmp_brewfile" "$tmp_dedupe" install "${profile_list[@]}"
 
-build_bundle_file "$tmp_brewfile" "$tmp_dedupe" install "${profile_list[@]}"
-
-if [[ $# -eq 0 ]]; then
-	set -- install
-fi
-
-exec brew bundle --file "$tmp_brewfile" "$@"
+		[[ $# -gt 0 ]] || set -- install
+		exec brew bundle --file "$tmp_brewfile" "$@"
+		;;
+esac

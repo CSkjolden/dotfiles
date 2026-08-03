@@ -50,6 +50,6 @@ snapshot-to output_file:
 
 # Personal computer
 personal:
-    just install core personal development
+    just install core personal development ai VM python
     just rust-setup
     just git-setup

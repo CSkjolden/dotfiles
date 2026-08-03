@@ -181,7 +181,7 @@
 		<key>featureAvailable.urlCleaner</key>
 		<true/>
 		<key>featureAvailable.windowLayout</key>
-		<false/>
+		<true/>
 		<key>featureAvailable.windowMaximizer</key>
 		<false/>
 		<key>featuresOnboardingVersion</key>
@@ -539,7 +539,7 @@
 		<key>panelUtilityUninstaller</key>
 		<true/>
 		<key>panelUtilityWindowLayout</key>
-		<true/>
+		<false/>
 		<key>pastePlainEnabled</key>
 		<true/>
 		<key>pastePlainShortcut</key>
@@ -625,7 +625,7 @@
 		<key>screenshotOpenEditorDirectly</key>
 		<false/>
 		<key>screenshotSaveFolder</key>
-		<string></string>
+		<string>/Users/skjold/Screenshots</string>
 		<key>screenshotSaveSubfolder</key>
 		<string></string>
 		<key>screenshotShortcut</key>
@@ -731,7 +731,7 @@
 		<key>whatsAppOrganizerLayout</key>
 		<string>flat</string>
 		<key>windowGestureEnabled</key>
-		<true/>
+		<false/>
 		<key>windowGestureModifiers</key>
 		<string>control+command</string>
 		<key>windowGestureRaiseWindow</key>
@@ -739,51 +739,51 @@
 		<key>windowLayoutHiddenActions</key>
 		<string></string>
 		<key>windowLayoutShortcutBottom</key>
-		<string>control+option:125</string>
+		<string>none</string>
 		<key>windowLayoutShortcutBottomCenterSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutBottomLeft</key>
-		<string>control+option:38</string>
+		<string>none</string>
 		<key>windowLayoutShortcutBottomLeftSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutBottomRight</key>
-		<string>control+option:40</string>
+		<string>none</string>
 		<key>windowLayoutShortcutBottomRightSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutCenter</key>
-		<string>control+option:8</string>
+		<string>none</string>
 		<key>windowLayoutShortcutCenterThird</key>
-		<string>control+option:3</string>
+		<string>none</string>
 		<key>windowLayoutShortcutFullScreen</key>
 		<string>none</string>
 		<key>windowLayoutShortcutLeft</key>
-		<string>control+option:123</string>
+		<string>control+option+shift+command:123</string>
 		<key>windowLayoutShortcutLeftThird</key>
-		<string>control+option:2</string>
+		<string>none</string>
 		<key>windowLayoutShortcutLeftTwoThirds</key>
-		<string>control+option:14</string>
+		<string>none</string>
 		<key>windowLayoutShortcutMaximize</key>
-		<string>control+option:36</string>
+		<string>control+option+shift+command:126</string>
 		<key>windowLayoutShortcutNextDisplay</key>
-		<string>control+option+command:124</string>
+		<string>none</string>
 		<key>windowLayoutShortcutRestore</key>
-		<string>control+option:15</string>
+		<string>none</string>
 		<key>windowLayoutShortcutRight</key>
-		<string>control+option:124</string>
+		<string>control+option+shift+command:124</string>
 		<key>windowLayoutShortcutRightThird</key>
-		<string>control+option:5</string>
+		<string>none</string>
 		<key>windowLayoutShortcutRightTwoThirds</key>
-		<string>control+option:17</string>
+		<string>none</string>
 		<key>windowLayoutShortcutTop</key>
-		<string>control+option:126</string>
+		<string>none</string>
 		<key>windowLayoutShortcutTopCenterSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutTopLeft</key>
-		<string>control+option:32</string>
+		<string>none</string>
 		<key>windowLayoutShortcutTopLeftSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutTopRight</key>
-		<string>control+option:34</string>
+		<string>none</string>
 		<key>windowLayoutShortcutTopRightSixth</key>
 		<string>none</string>
 		<key>windowLayoutShortcutsEnabled</key>

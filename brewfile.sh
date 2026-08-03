@@ -53,7 +53,9 @@ build_bundle_file() {
 			echo "Unknown profile '$selected_profile'" >&2
 			return 1
 		}
+		# Ensure a trailing newline so profiles without one don't merge with the next.
 		cat "$brewfile_path" >> "$output_file"
+		printf '\n' >> "$output_file"
 	done
 
 	# Remove repeated lines and duplicate packages (same type + name).

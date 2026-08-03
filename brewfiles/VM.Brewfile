@@ -1,0 +1,1 @@
+cask "windows-app"

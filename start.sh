@@ -13,6 +13,10 @@ if ! command -v brew &> /dev/null; then
     log "ERROR: Failed to install Homebrew."
     exit 1
   fi
+  # Fresh install: brew isn't on PATH in this shell yet, so locate it directly.
+  BREW_BIN="/opt/homebrew/bin/brew"
+  [[ -x "$BREW_BIN" ]] || BREW_BIN="/usr/local/bin/brew"
+  eval "$("$BREW_BIN" shellenv)"
 else
   log "Homebrew already installed, skipping."
 fi

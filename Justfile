@@ -52,4 +52,7 @@ snapshot-to output_file:
 personal:
     just install core personal development ai VM python
     just rust-setup
-    just git-setup
+
+# Work computer
+work:
+    just install core work development VM dotnet

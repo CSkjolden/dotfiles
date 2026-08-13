@@ -1,3 +1,6 @@
 # Work profile packages live here.
 
-# Add work-only apps and packages here.
+cask "microsoft-edge"
+cask "microsoft-outlook"
+
+brew "powershell"

@@ -14,6 +14,8 @@
 		<string>off</string>
 		<key>appUpdatesIncludeAppStore</key>
 		<true/>
+		<key>appUpdatesIncludeHomebrewApps</key>
+		<true/>
 		<key>appUpdatesNotify</key>
 		<true/>
 		<key>appVolumes</key>
@@ -48,6 +50,16 @@
 		<true/>
 		<key>cleanerScheduleWeekday</key>
 		<integer>2</integer>
+		<key>clipboardAutoClearDelaySeconds</key>
+		<integer>20</integer>
+		<key>clipboardAutoClearOnDelay</key>
+		<false/>
+		<key>clipboardAutoClearOnDisplaySleep</key>
+		<false/>
+		<key>clipboardAutoClearOnScreenLock</key>
+		<false/>
+		<key>clipboardAutoClearOnSleep</key>
+		<false/>
 		<key>clipboardHistoryEnabled</key>
 		<true/>
 		<key>clipboardHistoryIgnoredApps</key>
@@ -59,7 +71,7 @@
 		<key>clipboardHistoryLimit</key>
 		<integer>100</integer>
 		<key>clipboardHistoryShortcut</key>
-		<string>control+option+shift+command:9</string>
+		<string>control+option+command:9</string>
 		<key>clipboardHistoryShortcutEnabled</key>
 		<true/>
 		<key>clipboardHistorySkipSensitive</key>
@@ -68,17 +80,17 @@
 		<false/>
 		<key>colorPickerFormat</key>
 		<string>hex</string>
-		<key>colorPickerShortcut</key>
-		<string>control+option+command:8</string>
-		<key>colorPickerShortcutEnabled</key>
-		<false/>
 		<key>commandBarAliases</key>
 		<string>{"app.bundle.com.microsoft.VSCode":"VSCode"}</string>
 		<key>commandBarDisabledSources</key>
 		<string>answers,emoji</string>
+		<key>commandBarFileIgnores</key>
+		<string></string>
 		<key>commandBarHidden</key>
 		<string></string>
 		<key>commandBarPins</key>
+		<string></string>
+		<key>commandBarPositionOffset</key>
 		<string></string>
 		<key>commandBarShortcut</key>
 		<string>command:49</string>
@@ -132,6 +144,8 @@
 		<false/>
 		<key>featureAvailable.finderRename</key>
 		<true/>
+		<key>featureAvailable.focusFollowsMouse</key>
+		<false/>
 		<key>featureAvailable.homebrew</key>
 		<true/>
 		<key>featureAvailable.keepAwake</key>
@@ -210,6 +224,10 @@
 		<true/>
 		<key>finderRenameShortcut</key>
 		<string>:120</string>
+		<key>focusFollowsMouseDelayMilliseconds</key>
+		<integer>250</integer>
+		<key>focusFollowsMouseEnabled</key>
+		<false/>
 		<key>hasOnboarded</key>
 		<true/>
 		<key>hotkeyEnabled</key>
@@ -241,7 +259,7 @@
 		<key>keyboardDebounceWindowMs</key>
 		<integer>5</integer>
 		<key>lastUpdateIntroVersion</key>
-		<string>3.3.1</string>
+		<string>3.3.2</string>
 		<key>launchAtLoginWanted</key>
 		<true/>
 		<key>mediaGIFEnd</key>
@@ -256,14 +274,44 @@
 		<real>0.0</real>
 		<key>mediaGIFWidth</key>
 		<integer>720</integer>
+		<key>mediaImageBackground</key>
+		<string>transparent</string>
+		<key>mediaImageExactResizeMode</key>
+		<string>stretch</string>
 		<key>mediaImageFormat</key>
 		<string>jpeg</string>
 		<key>mediaImageMaxDimension</key>
 		<integer>1600</integer>
+		<key>mediaImagePreserveModificationDate</key>
+		<false/>
+		<key>mediaImageProfiles</key>
+		<string>[]</string>
 		<key>mediaImageQuality</key>
 		<real>0.71999999999999997</real>
+		<key>mediaImageRenamePattern</key>
+		<string></string>
+		<key>mediaImageResizeHeight</key>
+		<integer>1200</integer>
+		<key>mediaImageResizeKind</key>
+		<string>maxDimension</string>
+		<key>mediaImageResizeWidth</key>
+		<integer>1600</integer>
+		<key>mediaImageSelectedProfileID</key>
+		<string></string>
 		<key>mediaImageStripMetadata</key>
 		<true/>
+		<key>mediaImageWatermarkKind</key>
+		<string>off</string>
+		<key>mediaImageWatermarkMargin</key>
+		<integer>32</integer>
+		<key>mediaImageWatermarkOpacity</key>
+		<real>0.45000000000000001</real>
+		<key>mediaImageWatermarkPosition</key>
+		<string>bottomRight</string>
+		<key>mediaImageWatermarkScale</key>
+		<real>0.17999999999999999</real>
+		<key>mediaImageWatermarkText</key>
+		<string></string>
 		<key>mediaLastTool</key>
 		<string>videoCompressor</string>
 		<key>mediaTextAccurate</key>
@@ -480,6 +528,8 @@
 		<true/>
 		<key>panelControlFilesExpanded</key>
 		<false/>
+		<key>panelControlFocusFollowsMouse</key>
+		<true/>
 		<key>panelControlInputExpanded</key>
 		<true/>
 		<key>panelControlKeyDebounce</key>
@@ -612,6 +662,8 @@
 		<string>off</string>
 		<key>radialMenuShortcut</key>
 		<string>control+option+command:49</string>
+		<key>recorderAutomaticZoom</key>
+		<true/>
 		<key>recorderCountdown</key>
 		<integer>3</integer>
 		<key>recorderEditorPresets</key>
@@ -633,10 +685,6 @@
 		<string></string>
 		<key>recorderSharingEnabled</key>
 		<true/>
-		<key>recorderShortcut</key>
-		<string>control+option+command:23</string>
-		<key>recorderShortcutEnabled</key>
-		<false/>
 		<key>recorderSystemAudio</key>
 		<true/>
 		<key>releaseNotesOnUpdate</key>
@@ -655,14 +703,10 @@
 		<key>scratchpadRetention</key>
 		<string>never</string>
 		<key>scratchpadShortcut</key>
-		<string>control+option+shift+command:7</string>
+		<string>control+option+command:7</string>
 		<key>scratchpadShortcutEnabled</key>
 		<true/>
 		<key>screenOCRDetectQRCodes</key>
-		<true/>
-		<key>screenOCRShortcut</key>
-		<string>control+option+shift+command:17</string>
-		<key>screenOCRShortcutEnabled</key>
 		<true/>
 		<key>screenshotAnnotationShadows</key>
 		<false/>
@@ -721,7 +765,7 @@
 		<key>screenshotSharingEnabled</key>
 		<true/>
 		<key>screenshotShortcut</key>
-		<string>control+option+shift+command:1</string>
+		<string>control+option+command:1</string>
 		<key>screenshotShortcutEnabled</key>
 		<true/>
 		<key>screenshotShowLastRegion</key>
@@ -742,6 +786,8 @@
 		<false/>
 		<key>shelfDropZoneEnabled</key>
 		<true/>
+		<key>shelfEdgeDragEnabled</key>
+		<false/>
 		<key>shelfEnabled</key>
 		<true/>
 		<key>shelfRemoveAfterDrop</key>
@@ -770,10 +816,12 @@
 		<string>control+option+command:1</string>
 		<key>superKeyEnabled</key>
 		<true/>
+		<key>superKeyModifiers</key>
+		<string>control+option+command</string>
 		<key>superKeySoloAction</key>
 		<string>none</string>
 		<key>supportUpdateIntroVersion</key>
-		<string>3.3.0</string>
+		<string>3.3.2</string>
 		<key>switcherAppRules</key>
 		<dict/>
 		<key>switcherCurrentSpaceOnly</key>
@@ -807,7 +855,7 @@
 		<key>textSnippetsEnabled</key>
 		<true/>
 		<key>updateHighlightsSeenVersion</key>
-		<string>3.3.1</string>
+		<string>3.3.2</string>
 		<key>urlCleanerCustomParameters</key>
 		<string></string>
 		<key>urlCleanerEnabled</key>
@@ -861,23 +909,23 @@
 		<key>windowLayoutShortcutFullScreen</key>
 		<string>none</string>
 		<key>windowLayoutShortcutLeft</key>
-		<string>control+option+shift+command:123</string>
+		<string>control+option+command:123</string>
 		<key>windowLayoutShortcutLeftThird</key>
 		<string>none</string>
 		<key>windowLayoutShortcutLeftTwoThirds</key>
 		<string>none</string>
 		<key>windowLayoutShortcutMarginMaximize</key>
-		<string>control+option+shift+command:125</string>
+		<string>control+option+command:125</string>
 		<key>windowLayoutShortcutMaximize</key>
-		<string>control+option+shift+command:126</string>
+		<string>control+option+command:126</string>
 		<key>windowLayoutShortcutNextDisplay</key>
-		<string>option+shift:124</string>
+		<string>control+option+shift+command:123</string>
 		<key>windowLayoutShortcutPreviousDisplay</key>
-		<string>option+shift:123</string>
+		<string>control+option+shift+command:124</string>
 		<key>windowLayoutShortcutRestore</key>
 		<string>none</string>
 		<key>windowLayoutShortcutRight</key>
-		<string>control+option+shift+command:124</string>
+		<string>control+option+command:124</string>
 		<key>windowLayoutShortcutRightThird</key>
 		<string>none</string>
 		<key>windowLayoutShortcutRightTwoThirds</key>
@@ -902,7 +950,7 @@
 		<array/>
 	</dict>
 	<key>vorssaintBackupAppVersion</key>
-	<string>3.3.1</string>
+	<string>3.3.2</string>
 	<key>vorssaintBackupVersion</key>
 	<integer>1</integer>
 </dict>

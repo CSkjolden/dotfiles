@@ -8,8 +8,6 @@
 		<string>system</string>
 		<key>appLanguage</key>
 		<string>en-US</string>
-		<key>appOutputDevices</key>
-		<dict/>
 		<key>appUpdatesCheckFrequency</key>
 		<string>off</string>
 		<key>appUpdatesIncludeAppStore</key>
@@ -22,6 +20,8 @@
 		<dict/>
 		<key>autoCheckUpdates</key>
 		<false/>
+		<key>autoQuitEnabled</key>
+		<true/>
 		<key>autoQuitExceptions</key>
 		<array>
 			<string>com.apple.finder</string>
@@ -65,13 +65,14 @@
 		<key>clipboardHistoryIgnoredApps</key>
 		<array>
 			<string>me.proton.pass.electron</string>
+			<string>me.proton.pass.catalyst</string>
 		</array>
 		<key>clipboardHistoryIncludeImagesFiles</key>
 		<true/>
 		<key>clipboardHistoryLimit</key>
 		<integer>100</integer>
 		<key>clipboardHistoryShortcut</key>
-		<string>control+option+command:9</string>
+		<string>control+option+shift+command:9</string>
 		<key>clipboardHistoryShortcutEnabled</key>
 		<true/>
 		<key>clipboardHistorySkipSensitive</key>
@@ -81,19 +82,64 @@
 		<key>colorPickerFormat</key>
 		<string>hex</string>
 		<key>commandBarAliases</key>
-		<string>{"app.bundle.com.microsoft.VSCode":"VSCode"}</string>
+		<string>{"link.612EDD37-A30A-4CF9-A41A-61CC87CFD79E":"s","app.bundle.com.microsoft.Word":"Word","app.bundle.com.microsoft.Outlook":"Outlook","app.bundle.com.microsoft.VSCode":"VSCode"}</string>
 		<key>commandBarDisabledSources</key>
 		<string>answers,emoji</string>
 		<key>commandBarFileIgnores</key>
 		<string></string>
 		<key>commandBarHidden</key>
-		<string></string>
+		<string>app.bundle.com.apple.AddressBook
+app.bundle.com.apple.Automator
+app.bundle.com.apple.BluetoothFileExchange
+app.bundle.com.apple.ColorSyncUtility
+app.bundle.com.apple.DigitalColorMeter
+app.bundle.com.apple.FontBook
+app.bundle.com.apple.Maps
+app.bundle.com.apple.MigrateAssistant
+app.bundle.com.apple.Music
+app.bundle.com.apple.Stickies
+app.bundle.com.apple.VoiceOverUtility
+app.bundle.com.apple.airport.airportutility
+app.bundle.com.apple.bootcampassistant
+app.bundle.com.apple.games
+app.bundle.com.apple.iBooksX
+app.bundle.com.apple.news
+app.bundle.com.apple.podcasts
+app.bundle.com.apple.stocks
+app.bundle.com.apple.weather
+app.bundle.com.epsteinapps.Hover-for-Safari
+app.bundle.me.proton.pass.catalyst
+app.bundle.org.adblockplus.adblockplussafarimac
+macsettings.com.apple.CD-DVD-Settings.extension
+macsettings.com.apple.Coverage-Settings.extension
+settings.about
+settings.support</string>
+		<key>commandBarLinks</key>
+		<data>
+		W3siaWQiOiJDRTM0NUIyNy0yMkRFLTQ3NTUtOTA0MS04NTQ4QzEzQUExNzUi
+		LCJuYW1lIjoicmRvYyIsImtpbmQiOiJsaW5rIiwiZGVzdGluYXRpb24iOiJo
+		dHRwczpcL1wvZG9jLnJ1c3QtbGFuZy5vcmdcL3N0YWJsZVwvc3RkXC9pbmRl
+		eC5odG1sP3NlYXJjaD17cXVlcnl9In0seyJpZCI6IjREN0E3QjA5LUUxREQt
+		NEIxRi1CNjVCLTI0RDBFREZGM0NENCIsIm5hbWUiOiJyYm9vayIsImtpbmQi
+		OiJsaW5rIiwiZGVzdGluYXRpb24iOiJodHRwczpcL1wvZG9jLnJ1c3QtbGFu
+		Zy5vcmdcL2Jvb2tcLz9zZWFyY2g9e3F1ZXJ5fSJ9LHsiaWQiOiJFNTcxQUZE
+		QS0zNTE4LTQ0NTgtQjA0Qy1CQTRFQUYwN0UxMDEiLCJuYW1lIjoiTWFwcyIs
+		ImtpbmQiOiJsaW5rIiwiZGVzdGluYXRpb24iOiJodHRwczpcL1wvd3d3Lmdv
+		b2dsZS5jb21cL21hcHMifSx7ImlkIjoiNjEyRUREMzctQTMwQS00Q0Y5LUE0
+		MUEtNjFDQzg3Q0ZENzlFIiwibmFtZSI6InNlYXJjaCIsImtpbmQiOiJsaW5r
+		IiwiZGVzdGluYXRpb24iOiJodHRwczpcL1wvd3d3Lmdvb2dsZS5jb21cL3Nl
+		YXJjaD9xPXtxdWVyeX0ifSx7ImlkIjoiREM0NjUzNDctNTY1Qy00MTNDLTgy
+		RDAtMjJDQjU2OThFMjQ5IiwibmFtZSI6ImdpdGh1YiIsImtpbmQiOiJsaW5r
+		IiwiZGVzdGluYXRpb24iOiJodHRwczpcL1wvZ2l0aHViLmNvbSJ9XQ==
+		</data>
 		<key>commandBarPins</key>
 		<string></string>
 		<key>commandBarPositionOffset</key>
 		<string></string>
+		<key>commandBarRowShortcuts</key>
+		<string>{"app.bundle.com.apple.Terminal":"control+option+command:17","link.612EDD37-A30A-4CF9-A41A-61CC87CFD79E":"control+option+command:35"}</string>
 		<key>commandBarShortcut</key>
-		<string>command:49</string>
+		<string>control+option+command:49</string>
 		<key>commandBarShortcutEnabled</key>
 		<true/>
 		<key>defaultDurationMinutes</key>
@@ -115,7 +161,7 @@
 		<key>featureAvailable.appUpdates</key>
 		<false/>
 		<key>featureAvailable.autoQuit</key>
-		<false/>
+		<true/>
 		<key>featureAvailable.brightness</key>
 		<false/>
 		<key>featureAvailable.cameraPreview</key>
@@ -343,7 +389,7 @@
 		<key>menuBarCPUTemperature</key>
 		<false/>
 		<key>menuBarCombineTemperatures</key>
-		<true/>
+		<false/>
 		<key>menuBarDiskActivity</key>
 		<false/>
 		<key>menuBarDiskUsage</key>
@@ -695,10 +741,10 @@
 		<true/>
 		<key>scratchpadDocument</key>
 		<data>
-		eyJwYWRzIjpbeyJ0ZXh0IjoiIiwibmFtZSI6IlNjcmF0Y2hwYWQiLCJpZCI6
-		IjFBRTBCQjZFLTAyRUEtNEJBMS1COEIzLTVGNDRDNEQ1REMzOCJ9XSwic2Vs
-		ZWN0ZWRJRCI6IjFBRTBCQjZFLTAyRUEtNEJBMS1COEIzLTVGNDRDNEQ1REMz
-		OCJ9
+		eyJzZWxlY3RlZElEIjoiMUFFMEJCNkUtMDJFQS00QkExLUI4QjMtNUY0NEM0
+		RDVEQzM4IiwicGFkcyI6W3sibmFtZSI6IlNjcmF0Y2hwYWQiLCJ0ZXh0Ijoi
+		IiwiaWQiOiIxQUUwQkI2RS0wMkVBLTRCQTEtQjhCMy01RjQ0QzRENURDMzgi
+		fV19
 		</data>
 		<key>scratchpadRetention</key>
 		<string>never</string>

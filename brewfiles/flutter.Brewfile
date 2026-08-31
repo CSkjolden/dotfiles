@@ -1,0 +1,2 @@
+cask "flutter"
+brew "cocoapods"

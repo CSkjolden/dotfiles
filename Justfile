@@ -50,7 +50,7 @@ snapshot-to output_file:
 
 # Personal computer
 personal:
-    just install core personal development ai VM python
+    just install core personal development ai VM python flutter uni
     just rust-setup
 
 # Work computer

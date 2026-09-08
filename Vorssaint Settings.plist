@@ -379,7 +379,7 @@ settings.support</string>
 		<key>launchAtLoginWanted</key>
 		<true/>
 		<key>liquidGlassEnabled</key>
-		<false/>
+		<true/>
 		<key>mediaGIFEnd</key>
 		<real>0.0</real>
 		<key>mediaGIFFPS</key>
@@ -537,29 +537,29 @@ settings.support</string>
 		<key>mixerShowFinder</key>
 		<false/>
 		<key>monitorAlertBattery</key>
-		<false/>
+		<true/>
 		<key>monitorAlertBatteryPercent</key>
 		<integer>15</integer>
 		<key>monitorAlertBatteryTemperature</key>
-		<false/>
+		<true/>
 		<key>monitorAlertBatteryTemperatureThreshold</key>
 		<integer>40</integer>
 		<key>monitorAlertCPU</key>
-		<false/>
+		<true/>
 		<key>monitorAlertCPUTemperature</key>
-		<false/>
+		<true/>
 		<key>monitorAlertCPUTemperatureThreshold</key>
 		<integer>90</integer>
 		<key>monitorAlertCPUThreshold</key>
-		<integer>90</integer>
+		<integer>95</integer>
 		<key>monitorAlertCooldownMinutes</key>
-		<integer>15</integer>
+		<integer>5</integer>
 		<key>monitorAlertDisk</key>
 		<false/>
 		<key>monitorAlertDiskFreePercent</key>
 		<integer>10</integer>
 		<key>monitorAlertMemory</key>
-		<false/>
+		<true/>
 		<key>monitorDiskActivity</key>
 		<true/>
 		<key>monitorDiskProtection</key>

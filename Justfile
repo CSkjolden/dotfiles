@@ -17,6 +17,10 @@ sync profile:
 audit:
     ./nix-helpers.sh audit
 
+# Check if any new macOS preference keys have been added since the last check
+preference-audit:
+    ./nix-helpers.sh macos-check
+
 # Log in to github with the scopes gitIdentity needs (adds user:email if missing)
 github-login:
     gh auth status --hostname github.com >/dev/null 2>&1 \

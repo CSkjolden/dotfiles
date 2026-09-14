@@ -8,6 +8,7 @@ in
     ./homebrew/core.nix
     ./homebrew/development.nix
     ./homebrew/vm.nix
+    ./macos.nix
   ];
 
   nix-homebrew = {

@@ -61,6 +61,12 @@ rustup update stable
 log "Installing Rust components..."
 rustup component add clippy rustfmt rust-analyzer rust-src llvm-tools-preview
 
+log "Adding WASM compile target..."
+rustup target add wasm32-unknown-unknown
+
+log "Installing wasm-pack..."
+brew install wasm-pack >/dev/null
+
 install_cargo_crate() {
 	local crate="$1"
 	local installed_version

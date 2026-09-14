@@ -1,58 +1,32 @@
 set shell := ["zsh", "-eu", "-c"]
+rebuild := `command -v darwin-rebuild >/dev/null 2>&1 && echo darwin-rebuild || echo "nix run nix-darwin --"`
 
 default:
     @just --list
 
-# List dynamic profiles discovered in brewfiles/*.Brewfile
-profiles:
-    zsh brewfile.sh profiles
-
-# Install selected profiles (defaults to core)
-install *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh
-
-# Check whether selected profiles are already satisfied
-check *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh check
-
-# List formulae/casks selected by profiles
-list *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh list
-
-# List only casks for selected profiles
-list-casks *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh list --cask
-
-# Audit installed machine state against all discovered profile files
-audit:
-    zsh brewfile.sh audit
-
-# Configure local git hooks path to use tracked hooks in .githooks
+# Configure dotfiles git hooks
 hooks-install:
     git config core.hooksPath .githooks
     chmod +x .githooks/pre-commit
 
-# Configure git identity and GitHub git integration
-git-setup:
-    zsh git.sh
+# Sync with dotfiles config
+sync profile:
+    sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure
 
-# Run Rust setup/update workflow (toolchain, components, and cargo utilities)
-rust-setup:
-    zsh rust.sh
+# Check flake evaluates and no undeclared Homebrew packages
+audit:
+    ./nix-helpers.sh audit
 
-# Dump installed machine state to brewfiles/snapshot.Brewfile
-snapshot:
-    zsh brewfile.sh dump
+# Log in to github with the scopes gitIdentity needs (adds user:email if missing)
+github-login:
+    gh auth status --hostname github.com >/dev/null 2>&1 \
+        && gh auth refresh -h github.com -s user:email \
+        || gh auth login -h github.com -w -c -s user:email
 
-# Dump installed machine state to a custom Brewfile path
-snapshot-to output_file:
-    zsh brewfile.sh dump --file "{{output_file}}"
+# Initial run on new machine
+init profile:
+    @just hooks-install
+    @just sync {{profile}}
+    @just github-login
+    @just sync {{profile}}
 
-# Personal computer
-personal:
-    just install core personal development ai VM python flutter uni
-    just rust-setup
-
-# Work computer
-work:
-    just install core work development VM dotnet

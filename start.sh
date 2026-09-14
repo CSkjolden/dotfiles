@@ -5,52 +5,24 @@ log() {
   echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
 }
 
-log "Installing Homebrew..."
-if ! command -v brew &> /dev/null; then
-  if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
-    log "Homebrew installed successfully."
-  else
-    log "ERROR: Failed to install Homebrew."
-    exit 1
-  fi
-  # Fresh install: brew isn't on PATH in this shell yet, so locate it directly.
-  BREW_BIN="/opt/homebrew/bin/brew"
-  [[ -x "$BREW_BIN" ]] || BREW_BIN="/usr/local/bin/brew"
-  eval "$("$BREW_BIN" shellenv)"
+profile="${1:?Usage: ./start.sh <personal|work>}"
+
+if command -v nix &> /dev/null; then
+  log "Nix already installed, skipping."
 else
-  log "Homebrew already installed, skipping."
+  log "Installing Nix..."
+  curl -fsSL https://install.determinate.systems/nix | sh -s -- install \
+    || { log "ERROR: Failed to install Nix."; exit 1; }
+  # Fresh install: nix isn't on PATH in this shell yet.
+  nix_daemon_script="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+  [[ -f "$nix_daemon_script" ]] && . "$nix_daemon_script"
+  command -v nix &> /dev/null \
+    || { log "ERROR: nix installed but not on PATH. Open a new terminal and re-run this script."; exit 1; }
+  log "Nix installed successfully."
 fi
 
+log "Applying $profile config..."
+# sudo resets $USER/$HOME to root; flake.nix needs the real values.
+sudo USER="$(id -un)" HOME="$HOME" nix run nix-darwin -- switch --flake ".#$profile" --impure
 
-log "Configuring Homebrew in Zsh..."
-BREW_PREFIX="$(brew --prefix)"
-BREW_SHELLENV_LINE="eval \"\$(${BREW_PREFIX}/bin/brew shellenv)\""
-if ! grep -Fqx "$BREW_SHELLENV_LINE" ~/.zprofile 2>/dev/null; then
-  echo "$BREW_SHELLENV_LINE" >> ~/.zprofile
-fi
-eval "$("${BREW_PREFIX}/bin/brew" shellenv)"
-
-log "Installing Just..."
-if brew install just; then
-  log "Just installed successfully."
-else
-  log "ERROR: Failed to install Just."
-  exit 1
-fi
-
-just hooks-install
-softwareupdate --install-rosetta --agree-to-license
-zsh .macos
-cat <<'GUIDE'
-
-Bootstrap complete. Use Just to install and configure the rest:
-
-  just profiles
-  just install core personal
-  just install core work
-  just check core work
-  just audit
-  just git-setup
-
-Tip: add or remove profile names after `just install` as needed.
-GUIDE
+log "Done. Run 'just init $profile' next to finish git/gh setup."

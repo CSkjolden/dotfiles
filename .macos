@@ -2,25 +2,6 @@
 
 osascript -e 'tell application "System Preferences" to quit'
 
-sudo -v
-if [[ "$(uname -s)" == "Darwin" ]]; then
-	sudo sh -c '
-		file="/etc/pam.d/sudo_local"
-		line="auth       sufficient     pam_tid.so"
-		if [ ! -f "$file" ]; then
-			printf "%s\n" "$line" > "$file"
-			echo "Enabled Touch ID for sudo."
-		elif ! grep -Eq "^[[:space:]]*auth[[:space:]]+sufficient[[:space:]]+pam_tid\\.so([[:space:]]|$)" "$file"; then
-			printf "%s\n" "$line" >> "$file"
-			echo "Enabled Touch ID for sudo."
-		else
-			echo "Touch ID for sudo already configured."
-		fi
-	'
-fi
-
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
 # Library/Preferences
 
 defaults write com.apple.dock persistent-apps -array #Empty dock

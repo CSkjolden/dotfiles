@@ -66,6 +66,7 @@
       NSTableViewDefaultSizeMode = 1;
       ApplePressAndHoldEnabled = false;
       "com.apple.keyboard.fnState" = false;
+      "com.apple.mouse.tapBehavior" = 1;
       AppleKeyboardUIMode = 2;
       NSAutomaticPeriodSubstitutionEnabled = false;
       AppleInterfaceStyle = "Dark";

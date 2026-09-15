@@ -1,6 +1,6 @@
 { pkgs, ... }:
 {
-  home.packages = [ pkgs.just ];
+  home.packages = [ pkgs.just pkgs.devenv ];
   imports = [ ./git.nix ];
 
   home.username = builtins.getEnv "USER";

@@ -1,4 +1,6 @@
 { ... }:
 {
-  homebrew.brews = [ "uv" ];
+  homebrew.brews = [ 
+    "uv" # Python environment manager
+   ];
 }

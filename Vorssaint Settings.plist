@@ -78,9 +78,9 @@
 		<key>clipboardHistoryIncludeImagesFiles</key>
 		<true/>
 		<key>clipboardHistoryLimit</key>
-		<integer>100</integer>
+		<integer>250</integer>
 		<key>clipboardHistoryQuickPreview</key>
-		<false/>
+		<true/>
 		<key>clipboardHistoryShortcut</key>
 		<string>control+option+command:9</string>
 		<key>clipboardHistoryShortcutEnabled</key>
@@ -479,7 +479,7 @@ settings.support</string>
 		<key>menuBarGPUTemperature</key>
 		<false/>
 		<key>menuBarHideIconWithMetrics</key>
-		<false/>
+		<true/>
 		<key>menuBarLabelStyle</key>
 		<string>compact</string>
 		<key>menuBarMemory</key>
@@ -797,7 +797,7 @@ settings.support</string>
 		<key>quitProtectionCloseDoubleIntervalMs</key>
 		<real>600</real>
 		<key>quitProtectionCloseEnabled</key>
-		<true/>
+		<false/>
 		<key>quitProtectionCloseExceptions</key>
 		<array/>
 		<key>quitProtectionCloseExtraModifier</key>
@@ -811,7 +811,7 @@ settings.support</string>
 		<key>quitProtectionCloseShowFeedback</key>
 		<true/>
 		<key>quitProtectionQuitDoubleIntervalMs</key>
-		<real>600</real>
+		<real>500</real>
 		<key>quitProtectionQuitEnabled</key>
 		<true/>
 		<key>quitProtectionQuitExceptions</key>
@@ -821,7 +821,7 @@ settings.support</string>
 		<key>quitProtectionQuitHoldDurationMs</key>
 		<real>800</real>
 		<key>quitProtectionQuitMode</key>
-		<string>hold</string>
+		<string>doublePress</string>
 		<key>quitProtectionQuitScope</key>
 		<string>all</string>
 		<key>quitProtectionQuitShowFeedback</key>
@@ -1032,7 +1032,7 @@ settings.support</string>
 		<key>superKeyModifiers</key>
 		<string>control+option+command</string>
 		<key>superKeySoloAction</key>
-		<string>none</string>
+		<string>escape</string>
 		<key>superKeySource</key>
 		<string>capsLock</string>
 		<key>supportUpdateIntroVersion</key>
@@ -1066,7 +1066,7 @@ settings.support</string>
 		<key>switcherSimpleMode</key>
 		<false/>
 		<key>switcherTakeOverSystemShortcuts</key>
-		<true/>
+		<false/>
 		<key>switcherWindowShortcut</key>
 		<string>command:50</string>
 		<key>switcherWindowlessApps</key>
@@ -1114,7 +1114,7 @@ settings.support</string>
 		<key>windowDirectionalEnabled</key>
 		<false/>
 		<key>windowDirectionalShortcut</key>
-		<string>control+option:49</string>
+		<string>command:44</string>
 		<key>windowEdgeSnapDisabledZones</key>
 		<string></string>
 		<key>windowEdgeSnapEnabled</key>

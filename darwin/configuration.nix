@@ -26,6 +26,9 @@ in
   # Lets determinate Nix manage the Nix install/daemon/nix.conf
   nix.enable = false;
 
+  # vscode itself is unfree; needed since programs.vscode installs it as a package
+  nixpkgs.config.allowUnfree = true;
+
   system.primaryUser = user;
   system.stateVersion = 7;
 

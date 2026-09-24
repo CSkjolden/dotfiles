@@ -1,4 +1,6 @@
 { ... }:
 {
-  homebrew.casks = [ "rustrover" ];
+  homebrew.casks = [ 
+    "rustrover" # Jetbrains IDE for Rust
+   ];
 }

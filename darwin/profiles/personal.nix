@@ -1,9 +1,8 @@
-{ rust-overlay, ... }:
+{ ... }:
 let
   user = builtins.getEnv "USER";
 in
 {
-  nixpkgs.overlays = [ rust-overlay.overlays.default ];
   home-manager.users.${user}.imports = [ ../../home/rust.nix ];
   imports = [
     ../homebrew/personal.nix

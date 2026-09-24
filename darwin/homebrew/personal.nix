@@ -10,6 +10,7 @@
       "discord" # Voice and text chat software
       "steam" # Video game digital distribution service
       "localsend" # Open-source cross-platform alternative to AirDrop
+      "google-gemini" # Quick question answering AI
     ];
   };
 }

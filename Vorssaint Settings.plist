@@ -48,11 +48,11 @@
 		<key>bluetoothSleepRestoreOnWake</key>
 		<true/>
 		<key>brightnessControlEnabled</key>
-		<false/>
+		<true/>
 		<key>brightnessKeysEnabled</key>
-		<false/>
+		<true/>
 		<key>brightnessOSDEnabled</key>
-		<false/>
+		<true/>
 		<key>brightnessUpdatePromptState</key>
 		<string>handled</string>
 		<key>cameraPreviewShortcut</key>
@@ -244,7 +244,7 @@ settings.support</string>
 		<key>featureAvailable.bluetoothSleep</key>
 		<true/>
 		<key>featureAvailable.brightness</key>
-		<false/>
+		<true/>
 		<key>featureAvailable.cameraPreview</key>
 		<false/>
 		<key>featureAvailable.cleaner</key>
@@ -824,7 +824,7 @@ settings.support</string>
 		<key>notchHapticFeedback</key>
 		<false/>
 		<key>notchHiddenControls</key>
-		<string>commandBar,keepAwake,microphone,recording,scratchpad,screenshot,speedTest,timer,volume</string>
+		<string>commandBar,microphone,mixer,music,panel,recording,scratchpad,screenshot,speedTest,timer</string>
 		<key>notchHiddenModules</key>
 		<string>agents,calendar,controls,downloads</string>
 		<key>notchHideInCaptures</key>
@@ -866,7 +866,7 @@ settings.support</string>
 		<key>notchOutlineEnabled</key>
 		<false/>
 		<key>notchPomodoroFocusMinutes</key>
-		<integer>25</integer>
+		<integer>20</integer>
 		<key>notchPomodoroLongBreakInterval</key>
 		<integer>4</integer>
 		<key>notchPomodoroLongBreakMinutes</key>
@@ -876,7 +876,7 @@ settings.support</string>
 		<key>notchPomodoroTotalSessions</key>
 		<integer>4</integer>
 		<key>notchQueueEnabled</key>
-		<true/>
+		<false/>
 		<key>notchQuickAccessLayout</key>
 		<data>
 		eyJidXR0b25zIjpbeyJhY3Rpb25JRCI6InN5c3RlbSIsImlkIjoiMDAwMDAw
@@ -1265,7 +1265,7 @@ settings.support</string>
 		<key>screenshotWatermarkPresets</key>
 		<string>[]</string>
 		<key>screenshotWatermarkStyle</key>
-		<string>{"text":"","rotation":0,"anchor":"bottomTrailing","opacity":0.4,"color":"white","size":0.3,"kind":"none"}</string>
+		<string>{"color":"white","rotation":0,"anchor":"bottomTrailing","size":0.3,"text":"","opacity":0.4,"kind":"none"}</string>
 		<key>scrollHorizontalEnabled</key>
 		<false/>
 		<key>scrollHorizontalModifier</key>

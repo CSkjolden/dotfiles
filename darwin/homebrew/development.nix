@@ -7,7 +7,6 @@
 
     casks = [
       "github" # Desktop client for GitHub repositories
-      "jetbrains-toolbox" # JetBrains tools manager
     ];
   };
 }

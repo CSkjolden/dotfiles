@@ -39,6 +39,7 @@
 			<string>com.apple.finder</string>
 			<string>com.apple.mobilephone</string>
 			<string>com.google.GeminiMacOS</string>
+			<string>com.spotify.client</string>
 		</array>
 		<key>batteryLimitPercent</key>
 		<integer>10</integer>
@@ -841,7 +842,7 @@ settings.support</string>
 		<key>notchHoverExpands</key>
 		<true/>
 		<key>notchIdleContent</key>
-		<string>battery</string>
+		<string>music</string>
 		<key>notchIncludeOtherPlayers</key>
 		<true/>
 		<key>notchKeyboardLight</key>
@@ -1264,7 +1265,7 @@ settings.support</string>
 		<key>screenshotWatermarkPresets</key>
 		<string>[]</string>
 		<key>screenshotWatermarkStyle</key>
-		<string>{"rotation":0,"color":"white","anchor":"bottomTrailing","kind":"none","opacity":0.4,"text":"","size":0.3}</string>
+		<string>{"text":"","rotation":0,"anchor":"bottomTrailing","opacity":0.4,"color":"white","size":0.3,"kind":"none"}</string>
 		<key>scrollHorizontalEnabled</key>
 		<false/>
 		<key>scrollHorizontalModifier</key>

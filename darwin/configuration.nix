@@ -21,6 +21,7 @@ in
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
+  home-manager.backupFileExtension = "backup";
   home-manager.users.${user} = import ../home/home.nix;
 
   # Lets determinate Nix manage the Nix install/daemon/nix.conf

@@ -7,6 +7,12 @@ log() {
 
 profile="${1:?Usage: ./start.sh <personal|work>}"
 
+if ! xcode-select -p &> /dev/null; then
+  log "Installing Command Line Tools (accept the dialog)..."
+  xcode-select --install
+  until xcode-select -p &> /dev/null; do sleep 5; done
+fi
+
 if command -v nix &> /dev/null; then
   log "Nix already installed, skipping."
 else

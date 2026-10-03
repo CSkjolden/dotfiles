@@ -124,8 +124,16 @@
     };
   };
 
-  # system.defaults.screencapture.location doesn't create the folder itself.
+  launchd.daemons.limit-maxfiles = {
+    serviceConfig = {
+      Label = "limit.maxfiles";
+      ProgramArguments = [ "/bin/launchctl" "limit" "maxfiles" "65536" "524288" ];
+      RunAtLoad = true;
+    };
+  };
+
   system.activationScripts.postActivation.text = ''
     mkdir -p "/Users/${config.system.primaryUser}/Screenshots"
+    /bin/launchctl limit maxfiles 65536 524288 || true
   '';
 }

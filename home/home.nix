@@ -4,7 +4,7 @@
     pkgs.just # A better make command
     pkgs.devenv # Create development environments
      ];
-  imports = [ ./git.nix ];
+  imports = [ ./git.nix ./shell.nix ];
 
   home.username = builtins.getEnv "USER";
   home.homeDirectory = "/Users/${builtins.getEnv "USER"}";

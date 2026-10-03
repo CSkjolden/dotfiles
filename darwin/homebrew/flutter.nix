@@ -1,5 +1,7 @@
 { ... }:
 {
+  imports = [ ./xcode.nix ];
+
   homebrew = {
     casks = [ 
       "flutter" # Flutter application toolkit

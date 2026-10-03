@@ -4,7 +4,10 @@
 
   programs.git = {
     enable = true;
-    lfs.enable = true;
+    lfs = {
+      enable = true;
+      package = null;
+    };
 
     includes = [ { path = "~/.gitconfig.local"; } ];
 
@@ -18,6 +21,8 @@
       rerere.enabled = true;
     };
   };
+
+  home.packages = [ pkgs.git-lfs ];
 
   # Adds git identity from the logged-in GitHub session into ~/.gitconfig.local
   home.activation.gitIdentity = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

@@ -10,8 +10,12 @@ hooks-install:
     chmod +x .githooks/pre-commit
 
 # Sync with dotfiles config
-sync profile:
+sync profile: _brew-update
     sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure
+
+[private]
+_brew-update:
+    [ ! -x /opt/homebrew/bin/brew ] || /opt/homebrew/bin/brew update
 
 # Check flake evaluates and no undeclared Homebrew packages
 audit:

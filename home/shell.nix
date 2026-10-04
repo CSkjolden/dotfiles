@@ -98,6 +98,7 @@
     ui.style = "modern";
     ui.hidden-files = true;
     zoxide.extend-cd = true;
+    core.expand-alias = false;
     keybindings.toggle-mode = "shift+tab";
     keybindings.toggle-menu = "none";
     updater = {

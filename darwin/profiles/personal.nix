@@ -3,7 +3,10 @@ let
   user = builtins.getEnv "USER";
 in
 {
-  home-manager.users.${user}.imports = [ ../../home/rust.nix ];
+  home-manager.users.${user} = {
+    imports = [ ../../home/rust.nix ];
+    my.flashspace.variant = "personal";
+  };
   imports = [
     ../homebrew/personal.nix
     ../homebrew/ai.nix

@@ -2,4 +2,5 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
+command -v gitleaks >/dev/null && gitleaks git --staged --redact --no-banner "$repo_root"
 "$repo_root/nix-helpers.sh" audit

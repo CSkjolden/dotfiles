@@ -13,6 +13,10 @@ let
   # Flip a shortcut's boolean to turn it on or off. Applied as the whole dict,
   # so a shortcut missing here reverts to the macOS default.
   shortcuts = {
+    # App switcher (Tab keycode is 48)
+    appSwitcher = sc 1 false noChar 48 (cmd);
+    appSwitcherReverse = sc 2 false noChar 48 (cmd + shift);
+
     # Keyboard navigation
     focusMenuBar = sc 7 true noChar 120 ctrl;
     focusDock = sc 8 true noChar 99 ctrl;

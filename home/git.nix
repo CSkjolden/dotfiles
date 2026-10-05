@@ -11,6 +11,8 @@
 
     includes = [ { path = "~/.gitconfig.local"; } ];
 
+    ignores = [ ".DS_Store" ];
+
     settings = {
       core.editor = "code --wait";
       core.pager = "less -FRX";

@@ -1,6 +1,6 @@
 { ... }:
 {
-  imports = [ ./xcode.nix ];
+  imports = [ ../xcode.nix ];
 
   homebrew = {
     casks = [ 

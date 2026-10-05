@@ -5,30 +5,11 @@
     pkgs.devenv # Create development environments
     pkgs.gitleaks # Secret scanning in the pre-commit hook
      ];
-  imports = [ ./git.nix ./shell.nix ./ghostty.nix ./flashspace.nix ];
+  imports = [ ./git.nix ./shell.nix ./ghostty.nix ./flashspace.nix ./vscode.nix ];
 
   home.username = builtins.getEnv "USER";
   home.homeDirectory = "/Users/${builtins.getEnv "USER"}";
   home.stateVersion = "24.11";
 
   programs.home-manager.enable = true;
-  programs.vscode = {
-    enable = true;
-    # Homebrew owns the app; wrap its CLI so Nix can still regen extensions.json
-    package = pkgs.writeShellScriptBin "code" ''exec /opt/homebrew/bin/code "$@"'';
-    profiles.default.userSettings = {
-      "files.autoSave" = "afterDelay";
-      "terminal.external.osxExec" = "Ghostty.app";
-      "terminal.integrated.initialHint" = false;
-      "terminal.integrated.fontFamily" = "JetBrainsMono Nerd Font";
-      "terminal.integrated.macOptionIsMeta" = true;
-      "terminal.integrated.enableVisualBell" = true;
-      "accessibility.signals.terminalBell" = { sound = "off"; };
-    };
-    profiles.default.extensions = with pkgs.nix-vscode-extensions.vscode-marketplace; [
-      dnicolson.binary-plist # Easily edit plist files
-      skellock.just # Justfile support for VS Code
-      bbenoist.nix # Nix language support for VS Code
-    ];
-  };
 }

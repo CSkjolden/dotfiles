@@ -9,7 +9,7 @@ checkForUpdatesAutomatically = false
 cornerHiddenApps = []
 displayMode = 'dynamic'
 enableFocusManagement = false
-enableIntegrations = false
+enableIntegrations = true
 enablePictureInPictureSupport = true
 enableSpaceControl = false
 enableSpaceControlAnimations = true
@@ -64,3 +64,8 @@ workspaceSwitcherSortByLastActivation = true
 workspaceSwitcherVisibleWorkspaces = 4
 workspaceTransitionDimming = 0.20000000000000001
 workspaceTransitionDuration = 0.29999999999999999
+
+[[floatingApps]]
+bundleIdentifier = 'com.mitchellh.ghostty'
+iconPath = '/Applications/Ghostty.app/Contents/Resources/Ghostty.icns'
+name = 'Ghostty'

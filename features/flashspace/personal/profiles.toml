@@ -5,9 +5,9 @@ name = 'Default'
 [[profiles.workspaces]]
 display = ''
 id = 'A5FBA172-4909-4053-AED6-1F4F367B267F'
-name = 'Communication'
+name = 'Chat'
 openAppsOnActivation = false
-symbolIconName = 'microphone.fill'
+symbolIconName = 'ellipsis.bubble.fill'
 
 [[profiles.workspaces.apps]]
 bundleIdentifier = 'com.microsoft.teams2'
@@ -27,9 +27,9 @@ name = 'Discord'
 [[profiles.workspaces]]
 display = ''
 id = '0674524A-4DBF-4379-9B69-71A8F4EEFA1B'
-name = 'Browsers'
+name = 'Web'
 openAppsOnActivation = false
-symbolIconName = 'safari.fill'
+symbolIconName = 'globe.europe.africa.fill'
 
 [[profiles.workspaces.apps]]
 bundleIdentifier = 'com.apple.Safari'
@@ -46,24 +46,24 @@ display = ''
 id = '2D0331E6-0151-434D-8AE7-6342D030F0A4'
 name = 'Code'
 openAppsOnActivation = false
-symbolIconName = 'keyboard.fill'
-
-[[profiles.workspaces.apps]]
-bundleIdentifier = 'com.jetbrains.rustrover'
-iconPath = '/Applications/RustRover.app/Contents/Resources/rustrover.icns'
-name = 'RustRover'
+symbolIconName = 'curlybraces'
 
 [[profiles.workspaces.apps]]
 bundleIdentifier = 'com.microsoft.VSCode'
 iconPath = '/Applications/Visual Studio Code.app/Contents/Resources/Code.icns'
 name = 'Code'
 
+[[profiles.workspaces.apps]]
+bundleIdentifier = 'com.jetbrains.rustrover'
+iconPath = '/Applications/RustRover.app/Contents/Resources/rustrover.icns'
+name = 'RustRover'
+
 [[profiles.workspaces]]
 display = ''
 id = '58F30D1E-6DC4-475C-9E0D-16ABBAF0DEC6'
-name = 'Organization'
+name = 'Tool'
 openAppsOnActivation = false
-symbolIconName = 'pencil.and.ruler.fill'
+symbolIconName = 'hammer.fill'
 
 [[profiles.workspaces.apps]]
 bundleIdentifier = 'md.obsidian'
@@ -78,9 +78,9 @@ name = 'GitHub Desktop'
 [[profiles.workspaces]]
 display = ''
 id = '2A4D52EE-4DB7-43E8-BA33-2094383C514F'
-name = 'Miscellaneous'
+name = 'Misc'
 openAppsOnActivation = false
-symbolIconName = 'hammer.fill'
+symbolIconName = 'archivebox.fill'
 
 [[profiles.workspaces.apps]]
 bundleIdentifier = 'com.spotify.client'
@@ -101,3 +101,13 @@ name = 'Vorssaint'
 bundleIdentifier = 'com.apple.systempreferences'
 iconPath = '/System/Applications/System Settings.app/Contents/Resources/SystemSettings.icns'
 name = 'System Settings'
+
+[[profiles.workspaces.apps]]
+bundleIdentifier = 'com.apple.iCal'
+iconPath = '/System/Applications/Calendar.app/Contents/Resources/AppIcon.icns'
+name = 'Calendar'
+
+[[profiles.workspaces.apps]]
+bundleIdentifier = 'com.mitchellh.ghostty'
+iconPath = '/Applications/Ghostty.app/Contents/Resources/Ghostty.icns'
+name = 'Ghostty'

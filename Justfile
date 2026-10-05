@@ -17,6 +17,10 @@ sync profile: _git-add _brew-update
 _brew-update:
     [ ! -x /opt/homebrew/bin/brew ] || /opt/homebrew/bin/brew update
 
+# Reload SketchyBar config without a rebuild
+bar:
+    sketchybar --reload
+
 [private]
 _git-add:
     git add -u && git add -N .

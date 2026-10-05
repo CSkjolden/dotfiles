@@ -5,10 +5,8 @@
     pkgs.devenv # Create development environments
     pkgs.gitleaks # Secret scanning in the pre-commit hook
      ];
-  imports = [ ./git.nix ./shell.nix ./ghostty.nix ./flashspace.nix ./vscode.nix ];
+  imports = [ ./git.nix ./shell.nix ];
 
-  home.username = builtins.getEnv "USER";
-  home.homeDirectory = "/Users/${builtins.getEnv "USER"}";
   home.stateVersion = "24.11";
 
   programs.home-manager.enable = true;

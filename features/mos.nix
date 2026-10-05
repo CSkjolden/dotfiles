@@ -3,6 +3,10 @@ let
   user = config.system.primaryUser;
 in
 {
+  homebrew.casks = [
+    "mos" # Smooth scrolling on mouse
+  ];
+
   system.defaults.CustomUserPreferences."com.caldis.Mos" = {
     smooth = true;
     smoothVertical = true;

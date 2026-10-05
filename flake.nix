@@ -33,8 +33,8 @@
     in
     {
       darwinConfigurations = {
-        personal = mkDarwinConfig [ ./darwin/profiles/personal.nix ];
-        work = mkDarwinConfig [ ./darwin/profiles/work.nix ];
+        personal = mkDarwinConfig [ ./machines/personal.nix ];
+        work = mkDarwinConfig [ ./machines/work.nix ];
       };
     };
 }

@@ -1,0 +1,4 @@
+{ ... }:
+{
+  homebrew.casks = [ "microsoft-edge" ];
+}

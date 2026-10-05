@@ -12,13 +12,13 @@ check_homebrew_drift() {
 
 	echo "[nix-helpers] Checking for undeclared Homebrew packages..."
 	local declared installed undeclared
-	declared="$(grep -ohE '"[a-zA-Z0-9@._-]+"' darwin/homebrew/*.nix | tr -d '"' | sort -u)"
+	declared="$(grep -ohE '"[a-zA-Z0-9@._-]+"' features/**/*.nix | tr -d '"' | sort -u)"
 	declared+=$'\nmas'
 	installed="$( { brew leaves; brew list --cask; } 2>/dev/null | sort -u)"
 	undeclared="$(comm -23 <(echo "$installed") <(echo "$declared" | sort -u))"
 
 	if [[ -n "$undeclared" ]]; then
-		echo "[nix-helpers] ERROR: installed via Homebrew but not declared in darwin/homebrew/*.nix:" >&2
+		echo "[nix-helpers] ERROR: installed via Homebrew but not declared in features/:" >&2
 		echo "$undeclared" | sed 's/^/  - /' >&2
 		return 1
 	fi

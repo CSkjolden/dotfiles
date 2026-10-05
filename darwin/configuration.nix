@@ -1,26 +1,15 @@
 { pkgs, ... }:
 let
+  # The only place the user is read from the environment; everything else uses config.system.primaryUser.
   user = builtins.getEnv "USER";
 in
 {
-  # All profile imports
   imports = [
-    ./homebrew/core.nix
-    ./homebrew/development.nix
-    ./homebrew/vm.nix
+    ./homebrew.nix
     ./macos.nix
     ./keybinds.nix
-    ./mos.nix
     ./nix.nix
   ];
-
-  nix-homebrew = {
-    enable = true;
-    enableRosetta = true;
-    inherit user;
-    # Adopt the already-installed /opt/homebrew instead of reinstalling.
-    autoMigrate = true;
-  };
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;

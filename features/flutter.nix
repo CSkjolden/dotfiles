@@ -1,14 +1,12 @@
 { ... }:
 {
-  imports = [ ../xcode.nix ];
-
   homebrew = {
-    casks = [ 
+    casks = [
       "flutter" # Flutter application toolkit
       "google-chrome" # Web browser
     ];
-    brews = [ 
+    brews = [
       "cocoapods" # Dependency manager for Swift and Objective-C Cocoa projects
-     ];
+    ];
   };
 }

@@ -9,11 +9,11 @@ in
     dock = {
       persistent-apps = [ ];
       autohide = true;
-      tilesize = 48;
+      tilesize = 36;
       enable-spring-load-actions-on-all-items = true;
       show-recents = false;
-      autohide-time-modifier = 0.1;
-      autohide-delay = 0.05;
+      autohide-time-modifier = 0.05;
+      autohide-delay = 1.0;
       scroll-to-open = true;
       mru-spaces = false;
     };

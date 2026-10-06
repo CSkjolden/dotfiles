@@ -48,7 +48,7 @@ let
     screenshotAreaToClipboard = sc 31 true 52 21 (ctrl + shift + cmd);
     screenshotOptions = sc 184 true 53 23 (shift + cmd);
 
-    # Mission Control, App Exposé, Show Desktop (FlashSpace uses ctrl+arrows)
+    # Mission Control, App Exposé, Show Desktop
     missionControl = sc 32 false noChar 126 (ctrl + fn);
     appExpose = sc 33 false noChar 125 (ctrl + fn);
     showDesktop = sc 36 true noChar 103 0;
@@ -66,23 +66,23 @@ let
     spotlightSearch = sc 64 false 32 49 cmd;
     spotlightFinderWindow = sc 65 false 32 49 (cmd + opt);
 
-    # Display, notes and window management
+    # Display, notes and window management (AeroSpace tiles, so the macOS tiling shortcuts are off)
     decreaseBrightness = sc 53 true noChar 107 0;
     increaseBrightness = sc 54 true noChar 113 0;
     quickNote = sc 190 true 113 12 fn;
     gameOverlay = sc 260 true noChar 53 cmd;
     minimize = sc 233 true 109 46 cmd;
-    fill = sc 237 true 102 3 (ctrl + fn);
-    center = sc 238 true 99 8 (ctrl + fn);
-    returnToPreviousSize = sc 239 true 114 15 (ctrl + fn);
-    tileLeftHalf = sc 240 true noChar 123 (ctrl + fn);
-    tileRightHalf = sc 241 true noChar 124 (ctrl + fn);
-    tileTopHalf = sc 242 true noChar 126 (ctrl + fn);
-    tileBottomHalf = sc 243 true noChar 125 (ctrl + fn);
-    arrangeLeftRight = sc 248 true noChar 123 (ctrl + shift + fn);
-    arrangeRightLeft = sc 249 true noChar 124 (ctrl + shift + fn);
-    arrangeTopBottom = sc 250 true noChar 126 (ctrl + shift + fn);
-    arrangeBottomTop = sc 251 true noChar 125 (ctrl + shift + fn);
+    fill = sc 237 false 102 3 (ctrl + fn);
+    center = sc 238 false 99 8 (ctrl + fn);
+    returnToPreviousSize = sc 239 false 114 15 (ctrl + fn);
+    tileLeftHalf = sc 240 false noChar 123 (ctrl + fn);
+    tileRightHalf = sc 241 false noChar 124 (ctrl + fn);
+    tileTopHalf = sc 242 false noChar 126 (ctrl + fn);
+    tileBottomHalf = sc 243 false noChar 125 (ctrl + fn);
+    arrangeLeftRight = sc 248 false noChar 123 (ctrl + shift + fn);
+    arrangeRightLeft = sc 249 false noChar 124 (ctrl + shift + fn);
+    arrangeTopBottom = sc 250 false noChar 126 (ctrl + shift + fn);
+    arrangeBottomTop = sc 251 false noChar 125 (ctrl + shift + fn);
   }
   // lib.listToAttrs (lib.imap1
     (n: code: lib.nameValuePair "switchToDesktop${toString n}" (sc (117 + n) false noChar code ctrl))

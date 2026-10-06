@@ -24,7 +24,7 @@ setup() {
 
   sketchybar --add bracket status.bg status.pad bluetooth.icon bluetooth status.sep.bluetooth \
       network status.sep.network battery.icon battery status.sep.clock clock \
-    --set status.bg $PILL
+    --set status.bg $CONTAINER
 }
 
 dispatch "$1"

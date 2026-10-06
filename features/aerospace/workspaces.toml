@@ -1,0 +1,36 @@
+# Open floating in whichever workspace is current, never moved or tiled.
+floating = [
+  "com.apple.finder",
+  "com.mitchellh.ghostty",
+]
+
+[[workspace]]
+name = "1-Code"
+symbol = "curlybraces"
+layout = "h_accordion"
+apps = ["com.microsoft.VSCode", "com.jetbrains.rustrover", "com.jetbrains.rider"]
+
+[[workspace]]
+name = "2-Web"
+symbol = "globe.europe.africa.fill"
+layout = "h_accordion"
+apps = ["com.apple.Safari", "com.google.Chrome"]
+
+[[workspace]]
+name = "3-Tool"
+symbol = "hammer.fill"
+layout = "h_accordion"
+apps = ["md.obsidian", "com.github.GitHubClient"]
+
+[[workspace]]
+name = "4-Chat"
+symbol = "ellipsis.bubble.fill"
+layout = "h_accordion"
+apps = ["com.microsoft.teams2", "com.microsoft.Outlook", "com.hnc.Discord"]
+
+# Last one as catch all
+[[workspace]]
+name = "5-Misc"
+symbol = "archivebox.fill"
+layout = "h_accordion"
+apps = ["com.spotify.client", "com.google.GeminiMacOS", "com.vorssaint.utils", "com.apple.systempreferences"]

@@ -21,7 +21,6 @@
       fetch.prune = true;
       push.autoSetupRemote = true;
       rerere.enabled = true;
-      filter.flashspace-display.clean = "sed -E \"s/^display = .*/display = ''/\"";
     };
   };
 

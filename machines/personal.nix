@@ -13,6 +13,4 @@
     ../profiles/rust.nix
     ../profiles/python.nix
   ];
-
-  home-manager.sharedModules = [ { my.flashspace.variant = "personal"; } ];
 }

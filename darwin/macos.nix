@@ -93,7 +93,6 @@ in
     # Settings without a typed nix-darwin option; written to the plists directly.
     CustomUserPreferences = {
       "com.apple.appleseed.FeedbackAssistant".Autogather = false;
-      "com.apple.TextEdit".SmartQuotes = false;
       "com.apple.ActivityMonitor".UpdatePeriod = 2;
       "com.apple.AdLib".allowApplePersonalizedAdvertising = false;
 
@@ -152,6 +151,13 @@ in
       RunAtLoad = true;
     };
   };
+
+  # Must run before nix-homebrew sets up the Intel prefix (enableRosetta).
+  system.activationScripts.preActivation.text = ''
+    if [ "$(/usr/bin/uname -m)" = "arm64" ] && ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+      /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+    fi
+  '';
 
   system.activationScripts.postActivation.text = ''
     mkdir -p "/Users/${config.system.primaryUser}/Screenshots"

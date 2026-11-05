@@ -4,7 +4,7 @@
     ../features/home.nix
     ../features/git.nix
     ../features/shell.nix
-     ../features/iris.nix
+    ../features/iris.nix
     ../features/ghostty.nix
     ../features/vscode.nix
     ../features/aerospace

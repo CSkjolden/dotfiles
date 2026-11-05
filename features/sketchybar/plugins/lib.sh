@@ -7,18 +7,18 @@ ICON_DIR="$DIR/icons"
 BARE="icon.drawing=off label.drawing=off padding_left=0 padding_right=0"
 
 # Rounded background shared by every pill.
-PILL="background.drawing=on background.color=0x22ffffff background.height=24 background.corner_radius=12"
+PILL="background.drawing=on background.color=0x10ffffff background.height=24 background.corner_radius=12"
 
 # Floating container behind each side of the bar; the bar itself is transparent.
-CONTAINER="background.drawing=on background.color=0xd0181825 background.height=28 background.corner_radius=14 background.border_width=1 background.border_color=0x22ffffff"
+CONTAINER="background.drawing=on background.color=0xd11171717 background.height=28 background.corner_radius=14 background.border_width=1 background.border_color=0x11ffffff"
 
 # Pill geometry: inset before the first icon and the width of one icon slot.
 INSET=9 SLOT=27
 
 # Workspace icon variants are the symbol rendered at this opacity (see sfsymbol.swift).
-ACTIVE=100 NORMAL=70 EMPTY=30
+ACTIVE=100 NORMAL=75 EMPTY=25
 
-# App icons shown in the active workspace pill: how many fit, and the width of one (icon is 18pt plus a gap).
+# App icons in the separate active-workspace strip: count and slot width.
 APPSLOTS=5 APPSLOT=26 APPDIM=55
 
 # Invisible item that only takes up space; extra arguments are passed to --set.
@@ -36,40 +36,32 @@ add_icon() {
       background.image.scale=0.5 ${_image:+background.image="$_image"} "$@"
 }
 
-# Items of one workspace pill: inset, icon, a label shown only when active and slots for the active pill's app icons.
+# Items of one workspace pill: inset, icon and a four-character name slot when active.
 # Arguments: index, name, icon path prefix (without variant), click command.
 add_workspace() {
   _i="$1" _name="$2" _icon="$3" _click="$4"
+  _label="${_name#[0-9]-}"
+  [ "$_label" != Focus ] || _label=Focs
 
   add_spacer "ws.$_i.pad" left $INSET click_script="$_click"
   add_icon "ws.$_i" left $SLOT "$_icon.$NORMAL.png" click_script="$_click"
   sketchybar \
     --add item "ws.$_i.label" left \
-    --set "ws.$_i.label" $BARE drawing=off click_script="$_click" \
-      label="${_name#[0-9]-}" label.drawing=on label.padding_right=10
-
-  _k=1
-  while [ "$_k" -le "$APPSLOTS" ]; do
-    add_icon "ws.$_i.app.$_k" left $APPSLOT "" drawing=off
-    _k=$((_k + 1))
-  done
+    --set "ws.$_i.label" $BARE width=0 click_script="$_click" \
+      label="$_label" label.font="SF Mono:Semibold:13.0" \
+      label.width=32 label.align=left label.padding_right=10
 }
 
 # Names of the items of workspace pill $1.
 workspace_members() {
   printf 'ws.%s.pad ws.%s ws.%s.label' "$1" "$1" "$1"
-  _k=1
-  while [ "$_k" -le "$APPSLOTS" ]; do
-    printf ' ws.%s.app.%s' "$1" "$_k"
-    _k=$((_k + 1))
-  done
 }
 
 # The bracket draws the active pill. Brackets paint in creation order, so create these after the container.
 add_workspace_pill() {
   sketchybar \
     --add bracket "ws.$1.bg" $(workspace_members "$1") \
-    --set "ws.$1.bg" $PILL background.drawing=off background.color=0x33ffffff
+    --set "ws.$1.bg" $PILL background.drawing=off background.color=0x22ffffff
 }
 
 # Skips no-op updates, because image reloads flash. Succeeds only when $2 differs from the last value saved under $1.

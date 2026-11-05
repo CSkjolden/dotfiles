@@ -1,5 +1,5 @@
 #!/bin/sh
-# Bluetooth | Wi-Fi | battery | clock in one pill on the right.
+# Bluetooth | volume | Wi-Fi | battery | clock in one pill on the right.
 #   status.sh setup  builds the items (run from sketchybarrc)
 . "$(dirname "$0")/lib.sh"
 
@@ -18,12 +18,14 @@ setup() {
   sh "$PLUGIN_DIR/battery.sh" setup
   add_separator status.sep.network
   sh "$PLUGIN_DIR/network.sh" setup
+  add_separator status.sep.volume
+  sh "$PLUGIN_DIR/volume.sh" setup
   add_separator status.sep.bluetooth
   sh "$PLUGIN_DIR/bluetooth.sh" setup
   add_spacer status.pad right 12
 
   sketchybar --add bracket status.bg status.pad bluetooth.icon bluetooth status.sep.bluetooth \
-      network status.sep.network battery.icon battery status.sep.clock clock \
+      volume status.sep.volume network status.sep.network battery.icon battery status.sep.clock clock \
     --set status.bg $CONTAINER
 }
 

@@ -4,6 +4,9 @@ floating = [
   "com.mitchellh.ghostty",
 ]
 
+focus-workspace = "6-Focus"
+catch-all-workspace = "5-Misc"
+
 [[workspace]]
 name = "1-Code"
 symbol = "curlybraces"
@@ -28,9 +31,15 @@ symbol = "ellipsis.bubble.fill"
 layout = "h_accordion"
 apps = ["com.microsoft.teams2", "com.microsoft.Outlook", "com.hnc.Discord"]
 
-# Last one as catch all
+# Unmatched windows go here, independently of workspace order.
 [[workspace]]
 name = "5-Misc"
 symbol = "archivebox.fill"
 layout = "h_accordion"
 apps = ["com.spotify.client", "com.google.GeminiMacOS", "com.vorssaint.utils", "com.apple.systempreferences"]
+
+[[workspace]]
+name = "6-Focus"
+symbol = "scope"
+layout = "tiles"
+apps = []

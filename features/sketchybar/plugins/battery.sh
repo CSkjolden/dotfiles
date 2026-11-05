@@ -24,10 +24,10 @@ update() {
 
   if printf '%s' "$info" | grep -q 'AC Power'; then
     symbol=battery.100percent.bolt
-  elif [ "$level" -ge 88 ]; then symbol=battery.100percent
-  elif [ "$level" -ge 63 ]; then symbol=battery.75percent
-  elif [ "$level" -ge 38 ]; then symbol=battery.50percent
-  elif [ "$level" -ge 13 ]; then symbol=battery.25percent
+  elif [ "$level" -ge 80 ]; then symbol=battery.100percent
+  elif [ "$level" -ge 60 ]; then symbol=battery.75percent
+  elif [ "$level" -ge 40 ]; then symbol=battery.50percent
+  elif [ "$level" -ge 15 ]; then symbol=battery.25percent
   else symbol=battery.0percent
   fi
 

@@ -14,7 +14,7 @@ in
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "backup";
-  home-manager.users.${user} = import ../home/home.nix;
+  home-manager.users.${user} = { };
 
   # vscode itself is unfree; needed since programs.vscode installs it as a package
   nixpkgs.config.allowUnfree = true;

@@ -14,7 +14,7 @@ apps = ["com.microsoft.VSCode", "com.jetbrains.rustrover", "com.jetbrains.rider"
 name = "2-Web"
 symbol = "globe.europe.africa.fill"
 layout = "h_accordion"
-apps = ["com.apple.Safari", "com.google.Chrome"]
+apps = ["com.apple.Safari", "com.google.Chrome", "com.microsoft.edgemac"]
 
 [[workspace]]
 name = "3-Tool"

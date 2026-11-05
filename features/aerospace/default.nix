@@ -60,7 +60,13 @@ in
 
       gaps = {
         inner = { horizontal = 4; vertical = 4; };
-        outer = { left = 4; right = 4; bottom = 4; top = 4; };
+        # The native menu bar is hidden, so only the notched built-in display reserves space for SketchyBar; other displays need it added here (bar height 32 + 4 gap).
+        outer = {
+          left = 4;
+          right = 4;
+          bottom = 4;
+          top = [ { monitor."built-in" = 4; } 36 ];
+        };
       };
 
       exec-on-workspace-change = [

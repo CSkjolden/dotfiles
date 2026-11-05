@@ -11,7 +11,7 @@ sketchybar --default \
 # Left: workspaces. AeroSpace triggers updates (see features/aerospace).
 sh "$PLUGIN_DIR/aerospace.sh" setup
 
-# Right: Bluetooth, Wi-Fi, battery and clock.
+# Right: Bluetooth, volume, Wi-Fi, battery and clock.
 sh "$PLUGIN_DIR/status.sh" setup
 
 sketchybar --update

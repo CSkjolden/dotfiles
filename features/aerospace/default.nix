@@ -4,7 +4,10 @@ let
   workspaces = cfg.workspace;
   inherit (cfg) floating;
   names = map (w: w.name) workspaces;
-  catchAll = lib.last workspaces;
+  focusWorkspace = cfg.focus-workspace;
+  assignedWorkspaces = builtins.filter (workspace: workspace.apps != []) workspaces;
+  catchAll = lib.findFirst (workspace: workspace.name == cfg.catch-all-workspace)
+    (throw "Unknown catch-all workspace") workspaces;
   # Windows land in their workspace, then set its layout if it has one (a container-wide setting).
   placeIn = w: [ "move-node-to-workspace ${w.name}" ] ++ lib.optional (w ? layout) "layout ${w.layout}";
   layoutOf = w: w.layout or "";
@@ -18,17 +21,31 @@ let
   wrap = "--boundaries all-monitors-outer-frame --boundaries-action wrap-around-all-monitors";
 
   # Bar updates
-  refreshBar = "exec-and-forget ${sketchybar} --trigger aerospace_workspace_change";
+  refreshBar = "exec-and-forget ${sketchybar} --trigger aerospace_focus_change";
   barScript = "$HOME/dotfiles/features/sketchybar/plugins/aerospace.sh";
+  sendToFocus = [
+    "move-node-to-workspace --focus-follows-window ${focusWorkspace}"
+    "layout tiling"
+    "layout tiles"
+    refreshBar
+  ];
+  cycleWorkspaces = direction:
+    "echo -- ${lib.concatStringsSep " " names} | workspace --stdin --wrap-around ${direction}";
 
   # Re-apply standard rules
   resetWindows = pkgs.writeShellScript "aerospace-reset-windows" ''
-    ${aerospace} list-windows --all --format '%{window-id}|%{app-bundle-id}' | while IFS='|' read -r id app; do
+    ${aerospace} list-windows --all --format '%{window-id}|%{app-bundle-id}|%{workspace}' | while IFS='|' read -r id app workspace; do
       case "$app" in
-        ${lib.concatStringsSep "|" floating}) ${aerospace} layout --window-id "$id" floating; continue ;;
+        ${lib.concatStringsSep "|" floating})
+          if [ "$workspace" = ${lib.escapeShellArg focusWorkspace} ]; then
+            ${aerospace} move-node-to-workspace --window-id "$id" ${lib.escapeShellArg catchAll.name}
+          fi
+          ${aerospace} layout --window-id "$id" floating
+          continue
+          ;;
       esac
       case "$app" in
-        ${lib.concatMapStrings (w: "${lib.concatStringsSep "|" w.apps}) ws=${w.name} lay=${layoutOf w} ;;\n        ") workspaces}*) ws=${catchAll.name} lay=${layoutOf catchAll} ;;
+        ${lib.concatMapStrings (w: "${lib.concatStringsSep "|" w.apps}) ws=${w.name} lay=${layoutOf w} ;;\n        ") assignedWorkspaces}*) ws=${catchAll.name} lay=${layoutOf catchAll} ;;
       esac
       ${aerospace} move-node-to-workspace --window-id "$id" "$ws"
       ${aerospace} layout --window-id "$id" tiling
@@ -112,10 +129,11 @@ in
           r = "exec-and-forget ${resetWindows}"; # Windows back to their workspaces
           b = "balance-sizes";
           m = "reload-config";
+          q = "workspace ${focusWorkspace}";
 
           # Workspaces
-          left = "workspace --wrap-around prev";
-          right = "workspace --wrap-around next";
+          left = cycleWorkspaces "prev";
+          right = cycleWorkspaces "next";
           tab = "workspace-back-and-forth";
         }
         // prefixed "${hyper}-shift" {
@@ -123,16 +141,18 @@ in
           j = "move down";
           k = "move up";
           l = "move right";
+          q = sendToFocus;
           r = [ "flatten-workspace-tree" refreshBar ]; # Also undoes join
           tab = "move-workspace-to-monitor --wrap-around next";
           comma = [ "join-with left" refreshBar ];
           period = [ "join-with right" refreshBar ];
         }
-        // prefixed hyper (lib.listToAttrs (lib.imap1
-          (i: name: lib.nameValuePair (toString i) "workspace ${name}")
+        // prefixed hyper (lib.listToAttrs (map
+          (name: lib.nameValuePair (builtins.head (lib.splitString "-" name)) "workspace ${name}")
           names))
-        // prefixed "${hyper}-shift" (lib.listToAttrs (lib.imap1
-          (i: name: lib.nameValuePair (toString i) "move-node-to-workspace ${name}")
+        // prefixed "${hyper}-shift" (lib.listToAttrs (map
+          (name: lib.nameValuePair (builtins.head (lib.splitString "-" name))
+            (if name == focusWorkspace then sendToFocus else "move-node-to-workspace --focus-follows-window ${name}"))
           names));
     };
   };

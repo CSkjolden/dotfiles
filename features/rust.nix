@@ -34,7 +34,8 @@
           flutter_rust_bridge_codegen # Code generator for Flutter Rust Bridge
           wasm-pack # Build and publish Rust-generated WebAssembly
           typos # Lint for common spelling mistakes in Rust code
-          cargo-llvm-cov # Code coverage for Rust projects
+          # Its integration tests segfault in the darwin sandbox, and Hydra doesn't cache the build.
+          (cargo-llvm-cov.overrideAttrs { doCheck = false; }) # Code coverage for Rust projects
           cargo-expand # Show the result of macro expansion
           bacon # Build automation tool for Rust
           twiggy # WebAssembly size profiler

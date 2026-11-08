@@ -13,6 +13,12 @@ hooks-install:
 sync profile: _git-add _brew-update
     sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure
 
+# Update nixpkgs (or another flake input) and verify the profile builds, without switching
+update profile input="nixpkgs": _git-add
+    nix flake update {{input}}
+    nix build '.#darwinConfigurations.{{profile}}.system' --impure --no-link
+    @echo "Build OK. Review with 'git diff flake.lock', then 'just sync {{profile}}' and commit flake.lock."
+
 [private]
 _brew-update:
     [ ! -x /opt/homebrew/bin/brew ] || /opt/homebrew/bin/brew update

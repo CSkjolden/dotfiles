@@ -14,7 +14,7 @@ check_homebrew_drift() {
 	local declared installed undeclared
 	declared="$(grep -ohE '"([a-zA-Z0-9@._-]+/){0,2}[a-zA-Z0-9@._-]+"' features/**/*.nix | tr -d '"' | sed -E 's|^[^/]+/[^/]+/||' | sort -u)"
 	declared+=$'\nmas'
-	installed="$( { brew leaves; brew list --cask; } 2>/dev/null | sort -u)"
+	installed="$( { brew leaves; brew list --cask; } 2>/dev/null | sed -E 's|^[^/]+/[^/]+/||' | sort -u)"
 	undeclared="$(comm -23 <(echo "$installed") <(echo "$declared" | sort -u))"
 
 	if [[ -n "$undeclared" ]]; then

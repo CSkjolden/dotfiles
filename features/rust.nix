@@ -1,0 +1,69 @@
+{ ... }:
+{
+  homebrew.casks = [
+    "rustrover" # Jetbrains IDE for Rust
+  ];
+
+  home-manager.sharedModules = [
+    ({ pkgs, lib, ... }:
+      let
+        stableComponents = [
+          "clippy" # Lint for common mistakes in Rust code
+          "rustfmt" # Rust code formatter
+          "rust-src" # Rust source code
+          "rust-analyzer" # Language server for Rust
+          "llvm-tools-preview" # LLVM tools required by cargo-llvm-cov
+        ];
+        stableTargets = [ "aarch64-apple-darwin" "x86_64-apple-darwin" "wasm32-unknown-unknown" ];
+
+        nightlyComponents = [
+          "rust-src" # Rust source code
+          "miri" # Rust interpreter for detecting undefined behavior
+        ];
+        nightlyTargets = [ "wasm32-unknown-unknown" ];
+
+        mkFlags = flag: values: lib.concatStringsSep " " (map (v: "${flag} ${v}") values);
+      in
+      {
+        home.packages = with pkgs; [
+          rustup # Rust toolchain manager
+
+          pkgconf # Package configuration tool
+          openssl # SSL/TLS library
+          wasm-bindgen-cli # WebAssembly bindings for Rust
+          flutter_rust_bridge_codegen # Code generator for Flutter Rust Bridge
+          wasm-pack # Build and publish Rust-generated WebAssembly
+          typos # Lint for common spelling mistakes in Rust code
+          # Its integration tests segfault in the darwin sandbox, and Hydra doesn't cache the build.
+          (cargo-llvm-cov.overrideAttrs { doCheck = false; }) # Code coverage for Rust projects
+          cargo-expand # Show the result of macro expansion
+          bacon # Build automation tool for Rust
+          twiggy # WebAssembly size profiler
+          sccache # Shared compilation cache for Rust
+          cargo-deny # Check for security vulnerabilities and licensing issues
+          cargo-machete # Manage multiple Rust crates in a workspace
+          cargo-semver-checks # Check for semver compatibility in Rust projects
+          binaryen # wasm-opt
+        ];
+
+        home.sessionVariables = {
+          OPENSSL_DIR = "${pkgs.openssl.dev}";
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+        };
+
+        # Binaries from manual `cargo install` runs land here.
+        home.sessionPath = [ "$HOME/.cargo/bin" ];
+
+        # Native rust and rustup toolchain for flutter_rust_bridge_codegen and other Rust tools
+        home.activation.rustupToolchains = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          rustupToolchains() {
+            local rustup="${pkgs.rustup}/bin/rustup"
+            $DRY_RUN_CMD "$rustup" toolchain install stable ${mkFlags "-c" stableComponents} ${mkFlags "-t" stableTargets}
+            $DRY_RUN_CMD "$rustup" toolchain install nightly ${mkFlags "-c" nightlyComponents} ${mkFlags "-t" nightlyTargets}
+            $DRY_RUN_CMD "$rustup" default stable
+          }
+          rustupToolchains || echo "rustupToolchains: failed (offline?) - run 'rustup toolchain install stable' manually" >&2
+        '';
+      })
+  ];
+}

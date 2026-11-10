@@ -1,5 +1,5 @@
-snapshot.Brewfile
 .DS_Store
+.cache/
 
 # Never commit machine-local or secret material
 *.local

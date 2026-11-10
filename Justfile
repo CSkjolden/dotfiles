@@ -1,58 +1,54 @@
 set shell := ["zsh", "-eu", "-c"]
+rebuild := `command -v darwin-rebuild >/dev/null 2>&1 && echo darwin-rebuild || echo "nix run nix-darwin --"`
 
 default:
     @just --list
 
-# List dynamic profiles discovered in brewfiles/*.Brewfile
-profiles:
-    zsh brewfile.sh profiles
-
-# Install selected profiles (defaults to core)
-install *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh
-
-# Check whether selected profiles are already satisfied
-check *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh check
-
-# List formulae/casks selected by profiles
-list *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh list
-
-# List only casks for selected profiles
-list-casks *selected_profiles='core':
-    profiles="{{selected_profiles}}"; HOMEBREW_BUNDLE_PROFILES="${profiles// /,}" zsh brewfile.sh list --cask
-
-# Audit installed machine state against all discovered profile files
-audit:
-    zsh brewfile.sh audit
-
-# Configure local git hooks path to use tracked hooks in .githooks
+# Configure dotfiles git hooks
 hooks-install:
     git config core.hooksPath .githooks
     chmod +x .githooks/pre-commit
 
-# Configure git identity and GitHub git integration
-git-setup:
-    zsh git.sh
+# Sync with dotfiles config
+sync profile: _git-add _brew-update
+    sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure
 
-# Run Rust setup/update workflow (toolchain, components, and cargo utilities)
-rust-setup:
-    zsh rust.sh
+# Update nixpkgs (or another flake input) and verify the profile builds, without switching
+update profile input="nixpkgs": _git-add
+    nix flake update {{input}}
+    nix build '.#darwinConfigurations.{{profile}}.system' --impure --no-link
+    @echo "Build OK. Review with 'git diff flake.lock', then 'just sync {{profile}}' and commit flake.lock."
 
-# Dump installed machine state to brewfiles/snapshot.Brewfile
-snapshot:
-    zsh brewfile.sh dump
+[private]
+_brew-update:
+    [ ! -x /opt/homebrew/bin/brew ] || /opt/homebrew/bin/brew update
 
-# Dump installed machine state to a custom Brewfile path
-snapshot-to output_file:
-    zsh brewfile.sh dump --file "{{output_file}}"
+# Reload SketchyBar config without a rebuild
+bar:
+    sketchybar --reload
 
-# Personal computer
-personal:
-    just install core personal development ai VM python flutter uni
-    just rust-setup
+[private]
+_git-add:
+    git add -u && git add -N .
 
-# Work computer
-work:
-    just install core work development VM dotnet
+# Check flake evaluates and no undeclared Homebrew packages
+audit:
+    ./nix-helpers.sh audit
+
+# Check if any new macOS preference keys have been added since the last check
+preference-audit:
+    ./nix-helpers.sh macos-check
+
+# Log in to github with the scopes gitIdentity needs (adds user:email if missing)
+github-login:
+    gh auth status --hostname github.com >/dev/null 2>&1 \
+        && gh auth refresh -h github.com -s user:email \
+        || gh auth login -h github.com -w -c -s user:email
+
+# Initial run on new machine
+init profile:
+    @just hooks-install
+    @just sync {{profile}}
+    @just github-login
+    @just sync {{profile}}
+

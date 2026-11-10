@@ -39,7 +39,7 @@
 
           local git_name git_email
           git_name="$("$gh_bin" api user --jq '.name // .login // empty' 2>/dev/null)" || git_name=""
-          git_email="$("$gh_bin" api user/emails --jq 'map(select(.primary and .verified)) | .[0].email // empty' 2>/dev/null)" || git_email=""
+          git_email="$("$gh_bin" api user/emails --jq '(map(select(.email | endswith("noreply.github.com")))[0].email) // (map(select(.primary and .verified))[0].email) // empty' 2>/dev/null)" || git_email=""
           [[ -n "$git_name" && -n "$git_email" ]] || return 0
 
           $DRY_RUN_CMD ${pkgs.git}/bin/git config --file "$HOME/.gitconfig.local" user.name "$git_name"

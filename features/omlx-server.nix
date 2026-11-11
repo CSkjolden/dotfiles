@@ -52,6 +52,10 @@ let
     echo "=== Model sync complete! ==="
     echo "Current models in $MODELS_DIR:"
     ls -1 "$MODELS_DIR"
+
+    echo ""
+    echo "Reloading oMLX server to register newly downloaded models..."
+    /bin/launchctl kickstart -k system/ai.omlx.server 2>/dev/null || true
   '';
 
   tokenScript = pkgs.writeShellScriptBin "omlx-token" ''
@@ -78,7 +82,12 @@ let
     echo ""
     echo "--- Available Models ---"
     API_KEY="$(cat "${apiKeyPath}" 2>/dev/null || true)"
-    curl -s -H "Authorization: Bearer $API_KEY" "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null || echo "No models loaded yet."
+    MODELS="$(curl -s -H "Authorization: Bearer $API_KEY" "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null || true)"
+    if [ -n "$MODELS" ]; then
+      echo "$MODELS"
+    else
+      echo "No models registered yet. Try restarting the server to rescan: sudo launchctl kickstart -k system/ai.omlx.server"
+    fi
   '';
 
   mergedSettings = lib.recursiveUpdate {

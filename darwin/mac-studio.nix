@@ -29,9 +29,17 @@
         "-c"
         ''
           mem_bytes=$(/usr/sbin/sysctl -n hw.memsize)
-          # Allocate ~88% of unified memory to single Metal process allocations (prevents premature OOM)
-          wired_limit=$(( mem_bytes * 88 / 100 ))
-          /usr/sbin/sysctl -w iogpu.wired_mem_limit="$wired_limit"
+          mem_mb=$(( mem_bytes / 1024 / 1024 ))
+          wired_limit_mb=$(( mem_mb * 88 / 100 ))
+
+          # Modern Apple Silicon sysctl accepts limit in MB
+          if /usr/sbin/sysctl iogpu.wired_limit_mb >/dev/null 2>&1; then
+            /usr/sbin/sysctl -w iogpu.wired_limit_mb="$wired_limit_mb" || true
+          elif /usr/sbin/sysctl debug.iogpu.wired_limit >/dev/null 2>&1; then
+            /usr/sbin/sysctl -w debug.iogpu.wired_limit="$wired_limit_mb" || true
+          elif /usr/sbin/sysctl iogpu.wired_mem_limit >/dev/null 2>&1; then
+            /usr/sbin/sysctl -w iogpu.wired_mem_limit="$(( mem_bytes * 88 / 100 ))" || true
+          fi
         ''
       ];
       RunAtLoad = true;
@@ -47,7 +55,15 @@
 
     # 3. VRAM Allocation Ceiling: Raise Metal allocation limit immediately without requiring reboot
     mem_bytes=$(/usr/sbin/sysctl -n hw.memsize)
-    wired_limit=$(( mem_bytes * 88 / 100 ))
-    /usr/sbin/sysctl -w iogpu.wired_mem_limit="$wired_limit" || true
+    mem_mb=$(( mem_bytes / 1024 / 1024 ))
+    wired_limit_mb=$(( mem_mb * 88 / 100 ))
+
+    if /usr/sbin/sysctl iogpu.wired_limit_mb >/dev/null 2>&1; then
+      /usr/sbin/sysctl -w iogpu.wired_limit_mb="$wired_limit_mb" || true
+    elif /usr/sbin/sysctl debug.iogpu.wired_limit >/dev/null 2>&1; then
+      /usr/sbin/sysctl -w debug.iogpu.wired_limit="$wired_limit_mb" || true
+    elif /usr/sbin/sysctl iogpu.wired_mem_limit >/dev/null 2>&1; then
+      /usr/sbin/sysctl -w iogpu.wired_mem_limit="$(( mem_bytes * 88 / 100 ))" || true
+    fi
   '';
 }

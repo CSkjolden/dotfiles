@@ -2,7 +2,7 @@
 {
   imports = [
     ../features/python.nix
-    ../features/tailscale.nix
+    ../features/tailscale-daemon.nix
   ];
 
   home-manager.sharedModules = [

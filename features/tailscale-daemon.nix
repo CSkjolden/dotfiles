@@ -24,5 +24,6 @@
   system.activationScripts.postActivation.text = ''
     mkdir -p /var/lib/tailscale
     chmod 700 /var/lib/tailscale
+    /bin/launchctl kickstart -k system/com.tailscale.tailscaled || true
   '';
 }

@@ -26,7 +26,7 @@ let
     import uvicorn
     from fastapi import FastAPI, HTTPException
     from fastapi.responses import Response, StreamingResponse
-    from misaki import en
+    from misaki import en, espeak
     from pydantic import BaseModel
 
     MODEL_PATH = "${ttsModelPath}"
@@ -83,6 +83,34 @@ let
     )
     _ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
     _TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+    _ORDINALS = {
+        1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth",
+        7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth", 11: "eleventh", 12: "twelfth",
+        13: "thirteenth", 14: "fourteenth", 15: "fifteenth", 16: "sixteenth",
+        17: "seventeenth", 18: "eighteenth", 19: "nineteenth", 20: "twentieth",
+        21: "twenty-first", 22: "twenty-second", 23: "twenty-third", 24: "twenty-fourth",
+        25: "twenty-fifth", 26: "twenty-sixth", 27: "twenty-seventh", 28: "twenty-eighth",
+        29: "twenty-ninth", 30: "thirtieth", 31: "thirty-first",
+    }
+    _ROMAN_TO_INT = {
+        "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8,
+        "IX": 9, "X": 10, "XI": 11, "XII": 12, "XIII": 13, "XIV": 14, "XV": 15,
+        "XVI": 16, "XVII": 17, "XVIII": 18, "XIX": 19, "XX": 20, "XXI": 21,
+    }
+    _CARDINAL_ROMAN_RE = re.compile(
+        r"\b(War|Part|Chapter|Book|Volume|Vol|Act|Scene|Phase|Stage|Type|Mark|Tier|Level|Section|Article)\s+"
+        r"(XXI|XX|XIX|XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)\b"
+    )
+    _TITLED_ROMAN_RE = re.compile(
+        r"\b((?:King|Queen|Pope|Emperor|Empress|Tsar|Czar|Prince|Princess|Duke|Archduke|Sultan|Pharaoh)\s+"
+        r"[A-ZÀ-ÖØ-Þ][a-zA-ZÀ-ÿ\-]+(?:\s+[A-ZÀ-ÖØ-Þ][a-zA-ZÀ-ÿ\-]+)?)\s+"
+        r"(XXI|XX|XIX|XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)\b"
+    )
+    _NAME_ROMAN_RE = re.compile(
+        r"\b([A-ZÀ-ÖØ-Þ][a-zÀ-ÿ\-]{2,})\s+"
+        r"(XXI|XX|XIX|XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|X|IX|VIII|VII|VI|V|IV|III|II)\b"
+    )
+    _NUMERIC_ORDINAL_RE = re.compile(r"\b([12]?\d|3[01])(?:st|nd|rd|th)\b", flags=re.IGNORECASE)
 
     def _two_digit_words(n: int) -> str:
         if n < 20:
@@ -111,6 +139,18 @@ let
         text = re.sub(r"!{2,}", "!", text)
         text = re.sub(r"\?{2,}", "?", text)
         text = re.sub(r"\.{4,}", "...", text)
+        text = _CARDINAL_ROMAN_RE.sub(
+            lambda m: f"{m.group(1)} {_two_digit_words(_ROMAN_TO_INT[m.group(2)])}", text
+        )
+        text = _TITLED_ROMAN_RE.sub(
+            lambda m: f"{m.group(1)} the {_ORDINALS[_ROMAN_TO_INT[m.group(2)]]}", text
+        )
+        text = _NAME_ROMAN_RE.sub(
+            lambda m: f"{m.group(1)} the {_ORDINALS[_ROMAN_TO_INT[m.group(2)]]}", text
+        )
+        text = _NUMERIC_ORDINAL_RE.sub(
+            lambda m: _ORDINALS.get(int(m.group(1)), m.group(0)), text
+        )
         text = re.sub(r"\b(1[89]\d\d|20\d\d)\b", _expand_year, text)
         return re.sub(r"\s+", " ", text).strip()
 
@@ -134,9 +174,10 @@ let
                 chunks.append(part)
         return chunks if chunks else [cleaned]
 
-    def _trim_outer_silence(audio: np.ndarray, pause_ms: float = 100.0, thresh: float = 0.012) -> np.ndarray:
+    def _trim_outer_silence(audio: np.ndarray, pause_ms: float = 100.0, thresh: float = 0.0025) -> np.ndarray:
         """
         Trims only the dead silence at the very start (~320ms) and end (~470ms) of the clip
+        using a low threshold (0.0025) and 25ms lead-in pad so unvoiced consonants are never clipped,
         while preserving 100% of Kokoro's internal punctuation pauses (',', '...', '-', ';', ':').
         """
         if audio.size == 0:
@@ -144,9 +185,9 @@ let
         idx = np.where(np.abs(audio) > thresh)[0]
         if idx.size == 0:
             return np.zeros(0, dtype=np.float32)
-        lead_pad = int(SAMPLE_RATE * 0.010)
+        lead_pad = int(SAMPLE_RATE * 0.025)
         start = max(0, int(idx[0]) - lead_pad)
-        end = min(len(audio), int(idx[-1]) + int(SAMPLE_RATE * 0.020))
+        end = min(len(audio), int(idx[-1]) + int(SAMPLE_RATE * 0.030))
         trimmed = audio[start:end]
         tail = np.zeros(int(SAMPLE_RATE * (pause_ms / 1000.0)), dtype=np.float32)
         return np.concatenate([trimmed, tail], axis=0)
@@ -174,8 +215,8 @@ let
             raise RuntimeError(f"ONNX model {ONNX_FILE} not found.")
         with open(TOKENIZER_FILE, encoding="utf-8") as f:
             _vocab = json.load(f)["model"]["vocab"]
-        _g2p_us = en.G2P(trf=False, british=False, fallback=None)
-        _g2p_gb = en.G2P(trf=False, british=True, fallback=None)
+        _g2p_us = en.G2P(trf=False, british=False, fallback=espeak.EspeakFallback(british=False))
+        _g2p_gb = en.G2P(trf=False, british=True, fallback=espeak.EspeakFallback(british=True))
         sess_opts = ort.SessionOptions()
         sess_opts.intra_op_num_threads = 10
         sess_opts.inter_op_num_threads = 1

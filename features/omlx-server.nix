@@ -34,8 +34,9 @@ let
     TOKENIZER_FILE = os.path.join(MODEL_PATH, "tokenizer.json")
     VOICES_DIR = os.path.join(MODEL_PATH, "voices")
     DEFAULT_VOICE = "${cfg.tts.defaultVoice}"
+    DEFAULT_SPEED = ${toString cfg.tts.defaultSpeed}
+    DEFAULT_SPLIT_PATTERN = r"(?<=[.;:!?\n—])\s+"
     SAMPLE_RATE = 24000
-    _CLAUSE_SPLIT_RE = re.compile(r"(?<=[,.;:!?\n—])\s+")
 
     app = FastAPI(title="Kokoro ONNX CPU TTS Server")
     _lock = threading.Lock()
@@ -52,7 +53,9 @@ let
         input: str
         voice: str = DEFAULT_VOICE
         response_format: str = "wav"
-        speed: float = 1.0
+        speed: float = DEFAULT_SPEED
+        pause_ms: float = 100.0
+        split_pattern: str | None = DEFAULT_SPLIT_PATTERN
         stream: bool = False
 
     def _load_voice(voice_name: str) -> np.ndarray:
@@ -65,11 +68,90 @@ let
         _voices[voice_name] = pack
         return pack
 
-    def _split_clauses(text: str) -> list[str]:
-        parts = [p.strip() for p in _CLAUSE_SPLIT_RE.split(text.strip()) if p.strip()]
-        return parts if parts else [text.strip()]
+    _EMOJI_RE = re.compile(
+        "["
+        "\U0001F300-\U0001F9FF"
+        "\U00002600-\U000027BF"
+        "\U0001FA00-\U0001FAFF"
+        "]+",
+        flags=re.UNICODE,
+    )
+    _SSML_RE = re.compile(r"<[^>]+>")
+    _EMOTION_TAG_RE = re.compile(
+        r"\[(?:happy|sad|excited|whisper|angry|laugh|laughing|sigh|pause|music|applause|clears throat|gasp)[^\]]*\]",
+        flags=re.IGNORECASE,
+    )
+    _ONES = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+    _TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
 
-    def _synthesize_clause(text: str, voice: str, speed: float) -> np.ndarray:
+    def _two_digit_words(n: int) -> str:
+        if n < 20:
+            return _ONES[n]
+        t, o = divmod(n, 10)
+        return f"{_TENS[t]}-{_ONES[o]}" if o else _TENS[t]
+
+    def _expand_year(match: re.Match) -> str:
+        yr = int(match.group(0))
+        hi, lo = divmod(yr, 100)
+        if yr == 2000:
+            return "two thousand"
+        if 2001 <= yr <= 2009:
+            return f"two thousand {_ONES[lo]}"
+        if lo == 0:
+            return f"{_two_digit_words(hi)} hundred"
+        if lo < 10:
+            return f"{_two_digit_words(hi)} oh {_ONES[lo]}"
+        return f"{_two_digit_words(hi)} {_two_digit_words(lo)}"
+
+    def _normalize_for_kokoro(text: str) -> str:
+        text = _SSML_RE.sub(" ", text)
+        text = _EMOTION_TAG_RE.sub(" ", text)
+        text = _EMOJI_RE.sub(" ", text)
+        text = re.sub(r"[*_`#~]+", "", text)
+        text = re.sub(r"!{2,}", "!", text)
+        text = re.sub(r"\?{2,}", "?", text)
+        text = re.sub(r"\.{4,}", "...", text)
+        text = re.sub(r"\b(1[89]\d\d|20\d\d)\b", _expand_year, text)
+        return re.sub(r"\s+", " ", text).strip()
+
+    def _split_clauses(text: str, split_pattern: str | None = DEFAULT_SPLIT_PATTERN) -> list[str]:
+        cleaned = _normalize_for_kokoro(text)
+        if not cleaned or not split_pattern:
+            return [cleaned] if cleaned else []
+        raw_parts = [p.strip() for p in re.split(split_pattern, cleaned) if p and p.strip()]
+        # Keep chunks under 500 chars so Kokoro prosody never degrades on long passages
+        chunks: list[str] = []
+        for part in raw_parts:
+            while len(part) > 480:
+                cut = part.rfind(", ", 0, 480)
+                if cut == -1:
+                    cut = part.rfind(" ", 0, 480)
+                if cut == -1:
+                    cut = 480
+                chunks.append(part[: cut + 1].strip())
+                part = part[cut + 1 :].strip()
+            if part:
+                chunks.append(part)
+        return chunks if chunks else [cleaned]
+
+    def _trim_outer_silence(audio: np.ndarray, pause_ms: float = 100.0, thresh: float = 0.012) -> np.ndarray:
+        """
+        Trims only the dead silence at the very start (~320ms) and end (~470ms) of the clip
+        while preserving 100% of Kokoro's internal punctuation pauses (',', '...', '-', ';', ':').
+        """
+        if audio.size == 0:
+            return audio
+        idx = np.where(np.abs(audio) > thresh)[0]
+        if idx.size == 0:
+            return np.zeros(0, dtype=np.float32)
+        lead_pad = int(SAMPLE_RATE * 0.010)
+        start = max(0, int(idx[0]) - lead_pad)
+        end = min(len(audio), int(idx[-1]) + int(SAMPLE_RATE * 0.020))
+        trimmed = audio[start:end]
+        tail = np.zeros(int(SAMPLE_RATE * (pause_ms / 1000.0)), dtype=np.float32)
+        return np.concatenate([trimmed, tail], axis=0)
+
+    def _synthesize_clause(text: str, voice: str, speed: float, pause_ms: float = 100.0) -> np.ndarray:
         g2p = _g2p_gb if (voice and voice.startswith("b")) else _g2p_us
         phonemes, _ = g2p(text)
         tokens = [_vocab[c] for c in phonemes if c in _vocab]
@@ -82,7 +164,8 @@ let
         spd = np.array([speed], dtype=np.float32)
         with _lock:
             out = _sess.run(None, {_in_names[0]: input_ids, _in_names[1]: style, _in_names[2]: spd})[0]
-        return np.asarray(out, dtype=np.float32).flatten()
+        raw = np.asarray(out, dtype=np.float32).flatten()
+        return _trim_outer_silence(raw, pause_ms=pause_ms)
 
     @app.on_event("startup")
     def startup_event():
@@ -141,7 +224,7 @@ let
 
         _abort_event.clear()
         voice = req.voice or DEFAULT_VOICE
-        clauses = _split_clauses(req.input)
+        clauses = _split_clauses(req.input, req.split_pattern)
         fmt = (req.response_format or "wav").lower()
 
         # Clause-pipelined PCM streaming for ultra-low TTFA (~35ms first chunk)
@@ -150,7 +233,7 @@ let
                 for clause in clauses:
                     if _abort_event.is_set():
                         break
-                    chunk = _synthesize_clause(clause, voice, req.speed)
+                    chunk = _synthesize_clause(clause, voice, req.speed, req.pause_ms)
                     if chunk.size > 0 and not _abort_event.is_set():
                         yield (np.clip(chunk, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
             if req.stream:
@@ -160,7 +243,7 @@ let
         for clause in clauses:
             if _abort_event.is_set():
                 break
-            chunk = _synthesize_clause(clause, voice, req.speed)
+            chunk = _synthesize_clause(clause, voice, req.speed, req.pause_ms)
             if chunk.size > 0:
                 chunks.append(chunk)
 
@@ -561,7 +644,12 @@ in
       defaultVoice = lib.mkOption {
         type = lib.types.str;
         default = "af_heart";
-        description = "Default Kokoro speaker voice.";
+        description = "Default Kokoro speaker voice (e.g. af_heart, af_bella, am_fenrir, bf_emma, bm_george).";
+      };
+      defaultSpeed = lib.mkOption {
+        type = lib.types.float;
+        default = 1.0;
+        description = "Default Kokoro speech speed multiplier (0.5 to 2.0).";
       };
     };
   };

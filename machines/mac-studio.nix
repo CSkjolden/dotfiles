@@ -26,6 +26,8 @@
       enable = true;
       port = 8002; # CPU + AMX Coprocessor: Kokoro-82M ONNX (CPUExecutionProvider)
       model = "onnx-community/Kokoro-82M-v1.0-ONNX";
+      defaultVoice = "af_heart";
+      defaultSpeed = 1.0;
     };
   };
 }

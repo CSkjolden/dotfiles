@@ -42,10 +42,9 @@ let
         echo ">>> Downloading $repo into $dest_dir ..."
       fi
 
-      ${pkgs.uv}/bin/uvx --from "huggingface_hub[cli]" huggingface-cli download \
+      ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
         "$repo" \
-        --local-dir "$dest_dir" \
-        --local-dir-use-symlinks False
+        --local-dir "$dest_dir"
       echo ">>> Verified $repo."
     done
 
@@ -266,6 +265,7 @@ in
         StandardOutPath = "/var/log/omlx-sync.log";
         StandardErrorPath = "/var/log/omlx-sync.log";
         EnvironmentVariables = {
+          HOME = "/Users/${user}";
           PATH = "/opt/homebrew/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
         };
       };
@@ -319,6 +319,7 @@ in
         StandardErrorPath = "/var/log/omlx.err.log";
         EnvironmentVariables = {
           OMLX_HEADLESS = "1";
+          HOME = "/Users/${user}";
           PATH = "/opt/homebrew/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
         };
       };

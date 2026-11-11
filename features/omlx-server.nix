@@ -17,6 +17,7 @@ let
     import io
     import json
     import os
+    import re
     import threading
 
     import numpy as np
@@ -24,7 +25,7 @@ let
     import soundfile as sf
     import uvicorn
     from fastapi import FastAPI, HTTPException
-    from fastapi.responses import Response
+    from fastapi.responses import Response, StreamingResponse
     from misaki import en
     from pydantic import BaseModel
 
@@ -34,9 +35,11 @@ let
     VOICES_DIR = os.path.join(MODEL_PATH, "voices")
     DEFAULT_VOICE = "${cfg.tts.defaultVoice}"
     SAMPLE_RATE = 24000
+    _CLAUSE_SPLIT_RE = re.compile(r"(?<=[,.;:!?\n—])\s+")
 
     app = FastAPI(title="Kokoro ONNX CPU TTS Server")
     _lock = threading.Lock()
+    _abort_event = threading.Event()
     _sess = None
     _in_names = []
     _vocab = {}
@@ -50,6 +53,7 @@ let
         voice: str = DEFAULT_VOICE
         response_format: str = "wav"
         speed: float = 1.0
+        stream: bool = False
 
     def _load_voice(voice_name: str) -> np.ndarray:
         if voice_name in _voices:
@@ -60,6 +64,10 @@ let
         pack = np.fromfile(vpath, dtype=np.float32).reshape(-1, 1, 256)
         _voices[voice_name] = pack
         return pack
+
+    def _split_clauses(text: str) -> list[str]:
+        parts = [p.strip() for p in _CLAUSE_SPLIT_RE.split(text.strip()) if p.strip()]
+        return parts if parts else [text.strip()]
 
     def _synthesize_clause(text: str, voice: str, speed: float) -> np.ndarray:
         g2p = _g2p_gb if (voice and voice.startswith("b")) else _g2p_us
@@ -88,6 +96,9 @@ let
         sess_opts = ort.SessionOptions()
         sess_opts.intra_op_num_threads = 10
         sess_opts.inter_op_num_threads = 1
+        sess_opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        sess_opts.enable_cpu_mem_arena = True
+        sess_opts.enable_mem_pattern = True
         sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         _sess = ort.InferenceSession(ONNX_FILE, sess_options=sess_opts, providers=["CPUExecutionProvider"])
         _in_names = [i.name for i in _sess.get_inputs()]
@@ -100,6 +111,12 @@ let
             "device": "CPUExecutionProvider (10 P-cores / Accelerate AMX)",
             "model": os.path.basename(MODEL_PATH),
         }
+
+    @app.post("/abort")
+    @app.post("/v1/audio/abort")
+    def abort_speech():
+        _abort_event.set()
+        return {"status": "aborted"}
 
     @app.get("/v1/models")
     def list_models():
@@ -122,13 +139,35 @@ let
         if not req.input.strip():
             raise HTTPException(status_code=400, detail="input text must not be empty")
 
+        _abort_event.clear()
         voice = req.voice or DEFAULT_VOICE
-        waveform = _synthesize_clause(req.input, voice, req.speed)
-        if waveform.size == 0:
+        clauses = _split_clauses(req.input)
+        fmt = (req.response_format or "wav").lower()
+
+        # Clause-pipelined PCM streaming for ultra-low TTFA (~35ms first chunk)
+        if req.stream or fmt == "pcm":
+            def _stream_pcm():
+                for clause in clauses:
+                    if _abort_event.is_set():
+                        break
+                    chunk = _synthesize_clause(clause, voice, req.speed)
+                    if chunk.size > 0 and not _abort_event.is_set():
+                        yield (np.clip(chunk, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
+            if req.stream:
+                return StreamingResponse(_stream_pcm(), media_type="audio/pcm")
+
+        chunks = []
+        for clause in clauses:
+            if _abort_event.is_set():
+                break
+            chunk = _synthesize_clause(clause, voice, req.speed)
+            if chunk.size > 0:
+                chunks.append(chunk)
+
+        if not chunks:
             raise HTTPException(status_code=500, detail="TTS produced no audio")
 
-        waveform = np.clip(waveform, -1.0, 1.0)
-        fmt = (req.response_format or "wav").lower()
+        waveform = np.clip(np.concatenate(chunks, axis=0), -1.0, 1.0)
 
         if fmt == "pcm":
             pcm_bytes = (waveform * 32767.0).astype(np.int16).tobytes()
@@ -289,6 +328,17 @@ let
 
   mergedSettings = lib.recursiveUpdate {
     version = "1.0";
+    server = {
+      burst_decode_mode = "balanced";
+      preserve_mid_system_cache = true;
+      gpu_keep_warm_interval = 0.5;
+    };
+    scheduler = {
+      max_concurrent_requests = cfg.maxConcurrentRequests;
+      chunked_prefill = true;
+      decode_fairness = true;
+      prefill_priority = "speed";
+    };
     auth = {
       allow_unauthenticated_inference = cfg.auth.allowUnauthenticatedInference;
     };
@@ -308,8 +358,11 @@ let
     };
   } cfg.extraSettings;
 
-  pinnedModelRecords = lib.genAttrs (map (m: builtins.baseNameOf m) cfg.pinnedModels) (_: {
+  pinnedModelRecords = lib.genAttrs (map (m: builtins.baseNameOf m) cfg.pinnedModels) (name: {
     is_pinned = true;
+  } // lib.optionalAttrs (lib.hasInfix "Qwen" name) {
+    is_default = true;
+    mtp_enabled = true;
   });
 
   mergedModelSettings = {
@@ -631,7 +684,12 @@ in
               --model-path "${sttModelPath}" \
               --audio-encoder-compute-units cpuAndNeuralEngine \
               --text-decoder-compute-units cpuAndNeuralEngine \
-              --without-timestamps
+              --use-prefill-prompt \
+              --temperature-fallback-count 0 \
+              --best-of 1 \
+              --without-timestamps \
+              --skip-special-tokens \
+              --chunking-strategy vad
           ''
         ];
         RunAtLoad = true;

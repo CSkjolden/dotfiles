@@ -4,17 +4,148 @@ let
   user = config.system.primaryUser;
 
   modelsDir = "${cfg.storageDir}/models";
+  sttModelsDir = "${cfg.storageDir}/stt_models";
+  ttsModelsDir = "${cfg.storageDir}/tts_models";
   kvCacheDir = "${cfg.storageDir}/omlx_kv_cache";
   apiKeyPath = "/var/lib/omlx/api_key";
+
+  sttModelPath = "${sttModelsDir}/${cfg.stt.modelVariant}";
+  ttsModelPath = "${ttsModelsDir}/${builtins.baseNameOf cfg.tts.model}";
+
+  kokoroCpuServer = pkgs.writeScriptBin "kokoro-cpu-server" ''
+    #!/opt/homebrew/opt/omlx/libexec/bin/python3
+    import io
+    import os
+    import threading
+    import time
+
+    # Force all MLX operations onto CPU + AMX coprocessor (never touch Metal GPU)
+    os.environ["MLX_DEFAULT_DEVICE"] = "cpu"
+    import mlx.core as mx
+    mx.set_default_device(mx.cpu)
+
+    import numpy as np
+    import soundfile as sf
+    import uvicorn
+    from fastapi import FastAPI, HTTPException
+    from fastapi.responses import Response
+    from pydantic import BaseModel
+    from mlx_audio.tts.utils import load_model
+
+    MODEL_PATH = "${ttsModelPath}"
+    DEFAULT_VOICE = "${cfg.tts.defaultVoice}"
+    SAMPLE_RATE = 24000
+
+    app = FastAPI(title="Kokoro CPU TTS Server")
+    _lock = threading.Lock()
+    _model = None
+
+    class SpeechRequest(BaseModel):
+        model: str = "Kokoro-82M-bf16"
+        input: str
+        voice: str = DEFAULT_VOICE
+        response_format: str = "wav"
+        speed: float = 1.0
+
+    def _infer_lang_code(voice: str) -> str:
+        if voice and len(voice) >= 3 and voice[2] == "_" and voice[0] in "abefhijpz":
+            return voice[0]
+        return "a"
+
+    @app.on_event("startup")
+    def startup_event():
+        global _model
+        mx.set_default_device(mx.cpu)
+        if not os.path.isdir(MODEL_PATH):
+            raise RuntimeError(f"TTS model path {MODEL_PATH} does not exist yet.")
+        _model = load_model(MODEL_PATH, strict=False)
+        # Warm-up CPU synthesis pass so first request is instant
+        for res in _model.generate(text="Warmup.", voice=DEFAULT_VOICE, speed=1.0, lang_code="a", verbose=False):
+            mx.eval(res.audio)
+
+    @app.get("/health")
+    def health():
+        return {
+            "status": "ok" if _model is not None else "loading",
+            "device": str(mx.default_device()),
+            "model": os.path.basename(MODEL_PATH),
+        }
+
+    @app.get("/v1/models")
+    def list_models():
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "id": os.path.basename(MODEL_PATH),
+                    "object": "model",
+                    "owned_by": "kokoro-cpu",
+                    "device": str(mx.default_device()),
+                }
+            ],
+        }
+
+    @app.post("/v1/audio/speech")
+    def create_speech(req: SpeechRequest):
+        if _model is None:
+            raise HTTPException(status_code=503, detail="TTS model not loaded")
+        if not req.input.strip():
+            raise HTTPException(status_code=400, detail="input text must not be empty")
+
+        voice = req.voice or DEFAULT_VOICE
+        lang_code = _infer_lang_code(voice)
+
+        with _lock:
+            mx.set_default_device(mx.cpu)
+            chunks = []
+            for res in _model.generate(
+                text=req.input,
+                voice=voice,
+                speed=req.speed,
+                lang_code=lang_code,
+                verbose=False,
+            ):
+                audio = res.audio
+                if isinstance(audio, mx.array) and audio.dtype == mx.bfloat16:
+                    audio = audio.astype(mx.float32)
+                chunks.append(np.array(audio, dtype=np.float32).flatten())
+
+        if not chunks:
+            raise HTTPException(status_code=500, detail="TTS produced no audio")
+
+        waveform = np.concatenate(chunks, axis=0)
+        waveform = np.clip(waveform, -1.0, 1.0)
+        fmt = (req.response_format or "wav").lower()
+
+        if fmt == "pcm":
+            pcm_bytes = (waveform * 32767.0).astype(np.int16).tobytes()
+            return Response(content=pcm_bytes, media_type="audio/pcm")
+
+        media_types = {
+            "wav": ("WAV", "audio/wav"),
+            "flac": ("FLAC", "audio/flac"),
+            "mp3": ("MP3", "audio/mpeg"),
+            "opus": ("OGG", "audio/ogg"),
+        }
+        sf_fmt, mime = media_types.get(fmt, ("WAV", "audio/wav"))
+        buf = io.BytesIO()
+        sf.write(buf, waveform, SAMPLE_RATE, format=sf_fmt)
+        return Response(content=buf.getvalue(), media_type=mime)
+
+    if __name__ == "__main__":
+        uvicorn.run(app, host="${cfg.host}", port=${toString cfg.tts.port}, log_level="info")
+  '';
 
   syncScript = pkgs.writeShellScriptBin "sync-ai-models" ''
     set -euo pipefail
 
     STORAGE_DIR="${cfg.storageDir}"
     MODELS_DIR="${modelsDir}"
+    STT_DIR="${sttModelsDir}"
+    TTS_DIR="${ttsModelsDir}"
     KV_DIR="${kvCacheDir}"
 
-    echo "=== oMLX AI Model Synchronizer ==="
+    echo "=== Mac Studio Multi-Silicon AI Model Synchronizer ==="
 
     if [ ! -d "$STORAGE_DIR" ]; then
       echo "ERROR: Storage directory '$STORAGE_DIR' is not mounted!" >&2
@@ -22,7 +153,7 @@ let
       exit 1
     fi
 
-    mkdir -p "$MODELS_DIR" "$KV_DIR"
+    mkdir -p "$MODELS_DIR" "$STT_DIR" "$TTS_DIR" "$KV_DIR"
 
     TARGET_MODELS=(
       ${builtins.concatStringsSep "\n      " (map (m: ''"${m}"'') cfg.models)}
@@ -31,7 +162,7 @@ let
     if [ $# -gt 0 ]; then
       TARGET_MODELS=("$@")
     else
-      # Prune undeclared model directories from external storage
+      # Prune undeclared GPU LLM model directories from external storage
       for existing in "$MODELS_DIR"/*; do
         [ -d "$existing" ] || continue
         existing_name="$(basename "$existing")"
@@ -49,30 +180,51 @@ let
       done
     fi
 
+    echo ""
+    echo "--- [1/3] Syncing Metal GPU Models (oMLX :${toString cfg.port}) ---"
     for repo in "''${TARGET_MODELS[@]}"; do
       model_name="$(basename "$repo")"
       dest_dir="$MODELS_DIR/$model_name"
-      if [ -f "$dest_dir/config.json" ]; then
-        echo ">>> Model $repo is already present at $dest_dir (verifying integrity...)"
-      else
-        echo ""
-        echo ">>> Downloading $repo into $dest_dir ..."
-      fi
-
+      echo ">>> Syncing $repo -> $dest_dir ..."
       ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
         "$repo" \
         --local-dir "$dest_dir"
       echo ">>> Verified $repo."
     done
 
-    echo ""
-    echo "=== Model sync complete! ==="
-    echo "Current models in $MODELS_DIR:"
-    ls -1 "$MODELS_DIR"
+    ${lib.optionalString cfg.stt.enable ''
+      echo ""
+      echo "--- [2/3] Syncing Apple Neural Engine STT Model (WhisperKit :${toString cfg.stt.port}) ---"
+      echo ">>> Syncing CoreML bundle ${cfg.stt.repo}/${cfg.stt.modelVariant} -> $STT_DIR ..."
+      ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
+        "${cfg.stt.repo}" \
+        --include "${cfg.stt.modelVariant}/*" \
+        --local-dir "$STT_DIR"
+      echo ">>> Syncing bundled Whisper tokenizer (${cfg.stt.tokenizerRepo}) -> ${sttModelPath} ..."
+      ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
+        "${cfg.stt.tokenizerRepo}" \
+        --include "*.json" \
+        --include "*.txt" \
+        --local-dir "${sttModelPath}"
+      echo ">>> Verified ANE STT model."
+    ''}
+
+    ${lib.optionalString cfg.tts.enable ''
+      echo ""
+      echo "--- [3/3] Syncing CPU TTS Model (Kokoro :${toString cfg.tts.port}) ---"
+      echo ">>> Syncing ${cfg.tts.model} -> ${ttsModelPath} ..."
+      ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
+        "${cfg.tts.model}" \
+        --local-dir "${ttsModelPath}"
+      echo ">>> Verified CPU TTS model."
+    ''}
 
     echo ""
-    echo "Reloading oMLX server to register newly downloaded models..."
+    echo "=== Model sync complete! ==="
+    echo "Reloading GPU, ANE, and CPU inference daemons..."
     /bin/launchctl kickstart -k system/ai.omlx.server 2>/dev/null || true
+    /bin/launchctl kickstart -k system/ai.whisperkit.stt 2>/dev/null || true
+    /bin/launchctl kickstart -k system/ai.kokoro.tts 2>/dev/null || true
   '';
 
   tokenScript = pkgs.writeShellScriptBin "omlx-token" ''
@@ -87,22 +239,34 @@ let
 
   statusScript = pkgs.writeShellScriptBin "omlx-status" ''
     set -euo pipefail
-    echo "=== oMLX Server Status ==="
-    if ! curl -s -f -o /dev/null "http://127.0.0.1:${toString cfg.port}/health" 2>/dev/null; then
-      echo "Status: STOPPED (http://127.0.0.1:${toString cfg.port} is not responding)"
-      echo "Check logs: tail -n 20 /var/log/omlx.err.log"
-      exit 1
+    echo "=== Mac Studio Tri-Silicon AI Status ==="
+    echo ""
+    echo "[1] Metal GPU Engine (oMLX — ${cfg.host}:${toString cfg.port})"
+    if curl -s -f -o /dev/null "http://127.0.0.1:${toString cfg.port}/health" 2>/dev/null; then
+      echo "    Status: ONLINE"
+      MODELS="$(curl -s "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null | sed 's/^/      - /' || true)"
+      [ -n "$MODELS" ] && echo "$MODELS" || echo "      (no models registered)"
+    else
+      echo "    Status: STOPPED (check /var/log/omlx.err.log)"
     fi
 
-    echo "Status: ONLINE"
-    echo "Host:   ${cfg.host}:${toString cfg.port}"
     echo ""
-    echo "--- Available Models ---"
-    MODELS="$(curl -s "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null || true)"
-    if [ -n "$MODELS" ]; then
-      echo "$MODELS"
+    echo "[2] Apple Neural Engine STT (WhisperKit CoreML — ${cfg.host}:${toString cfg.stt.port})"
+    if curl -s -f -o /dev/null "http://127.0.0.1:${toString cfg.stt.port}/health" 2>/dev/null; then
+      echo "    Status: ONLINE (Compute: cpuAndNeuralEngine)"
+      echo "      - ${cfg.stt.modelVariant} (/v1/audio/transcriptions)"
     else
-      echo "No models registered yet. Try restarting the server to rescan: sudo launchctl kickstart -k system/ai.omlx.server"
+      echo "    Status: STOPPED / LOADING (check /var/log/whisperkit-stt.log)"
+    fi
+
+    echo ""
+    echo "[3] CPU + AMX Engine TTS (Kokoro — ${cfg.host}:${toString cfg.tts.port})"
+    if curl -s -f -o /dev/null "http://127.0.0.1:${toString cfg.tts.port}/health" 2>/dev/null; then
+      DEVICE="$(curl -s "http://127.0.0.1:${toString cfg.tts.port}/health" | ${pkgs.jq}/bin/jq -r '.device' 2>/dev/null || echo "cpu")"
+      echo "    Status: ONLINE (Compute: $DEVICE)"
+      echo "      - ${builtins.baseNameOf cfg.tts.model} (/v1/audio/speech)"
+    else
+      echo "    Status: STOPPED / LOADING (check /var/log/kokoro-tts.log)"
     fi
   '';
 
@@ -279,13 +443,69 @@ in
       default = { };
       description = "Arbitrary settings to deep-merge into ~/.omlx/settings.json.";
     };
+
+    stt = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Enable WhisperKit CoreML STT server on the Apple Neural Engine.";
+      };
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8001;
+        description = "Port for the Apple Neural Engine STT server (/v1/audio/transcriptions).";
+      };
+      repo = lib.mkOption {
+        type = lib.types.str;
+        default = "argmaxinc/whisperkit-coreml";
+        description = "Hugging Face repository hosting CoreML .mlmodelc Whisper bundles.";
+      };
+      modelVariant = lib.mkOption {
+        type = lib.types.str;
+        default = "openai_whisper-large-v3_turbo";
+        description = "CoreML Whisper model subfolder in argmaxinc/whisperkit-coreml.";
+      };
+      tokenizerRepo = lib.mkOption {
+        type = lib.types.str;
+        default = "openai/whisper-large-v3-turbo";
+        description = "Hugging Face repository for bundled Whisper tokenizer files.";
+      };
+    };
+
+    tts = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Enable Kokoro TTS server pinned to CPU + AMX coprocessor.";
+      };
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8002;
+        description = "Port for the CPU TTS server (/v1/audio/speech).";
+      };
+      model = lib.mkOption {
+        type = lib.types.str;
+        default = "mlx-community/Kokoro-82M-bf16";
+        description = "Hugging Face repository for Kokoro TTS model.";
+      };
+      defaultVoice = lib.mkOption {
+        type = lib.types.str;
+        default = "af_heart";
+        description = "Default Kokoro speaker voice.";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    homebrew.brews = lib.mkIf cfg.stt.enable [
+      "whisperkit-cli" # Swift native CoreML/ANE Whisper server for Apple Silicon
+    ];
+
     environment.systemPackages = [
       syncScript
       tokenScript
       statusScript
+      kokoroCpuServer
     ];
 
     # Background model sync service: runs once on boot or activation without blocking server startup
@@ -371,14 +591,82 @@ in
       };
     };
 
+    # 24/7 Apple Neural Engine (CoreML) Speech-to-Text server (:8001)
+    launchd.daemons.whisperkit-stt = lib.mkIf cfg.stt.enable {
+      serviceConfig = {
+        Label = "ai.whisperkit.stt";
+        UserName = user;
+        ProgramArguments = [
+          "/bin/sh"
+          "-c"
+          ''
+            set -euo pipefail
+
+            if [ ! -d "${sttModelPath}/AudioEncoder.mlmodelc" ]; then
+              echo "[whisperkit-stt] CoreML bundle not yet downloaded at ${sttModelPath}. Waiting for sync..." >&2
+              sleep 10
+              exit 1
+            fi
+
+            exec /opt/homebrew/bin/whisperkit-cli serve \
+              --host "${cfg.host}" \
+              --port "${toString cfg.stt.port}" \
+              --model-path "${sttModelPath}" \
+              --audio-encoder-compute-units cpuAndNeuralEngine \
+              --text-decoder-compute-units cpuAndNeuralEngine
+          ''
+        ];
+        RunAtLoad = true;
+        KeepAlive = true;
+        StandardOutPath = "/var/log/whisperkit-stt.log";
+        StandardErrorPath = "/var/log/whisperkit-stt.log";
+        EnvironmentVariables = {
+          HOME = "/Users/${user}";
+          PATH = "/opt/homebrew/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        };
+      };
+    };
+
+    # 24/7 CPU + AMX Coprocessor Text-to-Speech server (:8002)
+    launchd.daemons.kokoro-tts = lib.mkIf cfg.tts.enable {
+      serviceConfig = {
+        Label = "ai.kokoro.tts";
+        UserName = user;
+        ProgramArguments = [
+          "/bin/sh"
+          "-c"
+          ''
+            set -euo pipefail
+
+            if [ ! -f "${ttsModelPath}/config.json" ]; then
+              echo "[kokoro-tts] Kokoro weights not yet downloaded at ${ttsModelPath}. Waiting for sync..." >&2
+              sleep 10
+              exit 1
+            fi
+
+            exec ${kokoroCpuServer}/bin/kokoro-cpu-server
+          ''
+        ];
+        RunAtLoad = true;
+        KeepAlive = true;
+        StandardOutPath = "/var/log/kokoro-tts.log";
+        StandardErrorPath = "/var/log/kokoro-tts.log";
+        EnvironmentVariables = {
+          MLX_DEFAULT_DEVICE = "cpu";
+          HOME = "/Users/${user}";
+          PATH = "/opt/homebrew/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        };
+      };
+    };
+
     system.activationScripts.postActivation.text = ''
       # Ensure permissions for non-root execution by primary user
       mkdir -p /var/lib/omlx
       chown -R ${user}:staff /var/lib/omlx
       chmod 700 /var/lib/omlx
 
-      touch /var/log/omlx.log /var/log/omlx.err.log /var/log/omlx-sync.log
-      chown ${user}:staff /var/log/omlx.log /var/log/omlx.err.log /var/log/omlx-sync.log
+      touch /var/log/omlx.log /var/log/omlx.err.log /var/log/omlx-sync.log /var/log/whisperkit-stt.log /var/log/kokoro-tts.log
+      chown ${user}:staff /var/log/omlx.log /var/log/omlx.err.log /var/log/omlx-sync.log /var/log/whisperkit-stt.log /var/log/kokoro-tts.log
 
       # Non-destructively deep-merge integrations & auth settings into ~/.omlx/settings.json
       SETTINGS_DIR="/Users/${user}/.omlx"
@@ -408,6 +696,8 @@ in
 
       # Kickstart services immediately after switch
       /bin/launchctl kickstart -k system/ai.omlx.server || true
+      /bin/launchctl kickstart -k system/ai.whisperkit.stt || true
+      /bin/launchctl kickstart -k system/ai.kokoro.tts || true
       /bin/launchctl kickstart -k system/ai.omlx.models-sync || true
     '';
   };

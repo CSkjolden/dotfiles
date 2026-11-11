@@ -1,8 +1,8 @@
-{ config, ... }:
+{ lib, config, ... }:
 {
   nix-homebrew = {
     enable = true;
-    enableRosetta = true;
+    enableRosetta = lib.mkDefault true;
     user = config.system.primaryUser;
     # Adopt the already-installed /opt/homebrew instead of reinstalling.
     autoMigrate = true;

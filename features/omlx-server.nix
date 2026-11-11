@@ -30,6 +30,23 @@ let
 
     if [ $# -gt 0 ]; then
       TARGET_MODELS=("$@")
+    else
+      # Prune undeclared model directories from external storage
+      for existing in "$MODELS_DIR"/*; do
+        [ -d "$existing" ] || continue
+        existing_name="$(basename "$existing")"
+        keep=0
+        for repo in "''${TARGET_MODELS[@]}"; do
+          if [ "$(basename "$repo")" = "$existing_name" ]; then
+            keep=1
+            break
+          fi
+        done
+        if [ "$keep" -eq 0 ]; then
+          echo ">>> Pruning undeclared model directory: $existing"
+          rm -rf "$existing"
+        fi
+      done
     fi
 
     for repo in "''${TARGET_MODELS[@]}"; do
@@ -157,6 +174,7 @@ in
     pinnedModels = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
+        "Jundot/d3-nano-oQ8e"
         "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
       ];
       description = "Models to pre-load on boot and pin permanently in unified memory (never evicted).";
@@ -164,7 +182,7 @@ in
 
     hotCacheGb = lib.mkOption {
       type = lib.types.int;
-      default = 8;
+      default = 4;
       description = "RAM cache size in GB for hot prefix KV blocks on Apple Silicon.";
     };
 
@@ -188,7 +206,7 @@ in
 
     memoryGuard = lib.mkOption {
       type = lib.types.enum [ "off" "safe" "balanced" "aggressive" ];
-      default = "balanced";
+      default = "aggressive";
       description = "Memory guard tier for macOS unified memory pressure management.";
     };
 

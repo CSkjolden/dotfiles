@@ -11,7 +11,7 @@
       ProgramArguments = [
         "/opt/homebrew/bin/tailscaled"
         "--state=/var/lib/tailscale/tailscaled.state"
-        "--socket=/var/run/tailscale/tailscaled.sock"
+        "--socket=/var/run/tailscaled.socket"
         "--port=41641"
       ];
       RunAtLoad = true;
@@ -22,7 +22,7 @@
   };
 
   system.activationScripts.postActivation.text = ''
-    mkdir -p /var/lib/tailscale /var/run/tailscale
-    chmod 700 /var/lib/tailscale /var/run/tailscale
+    mkdir -p /var/lib/tailscale
+    chmod 700 /var/lib/tailscale
   '';
 }

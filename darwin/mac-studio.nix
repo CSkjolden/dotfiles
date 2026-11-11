@@ -1,9 +1,25 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   # Headless Mac Studio server configuration and kernel optimizations
 
   # Disable Touch ID for sudo to prevent PAM authorization hangs during SSH sessions
   security.pam.services.sudo_local.touchIdAuth = false;
+
+  # Headless system defaults to prevent popups and dialogs
+  system.defaults = {
+    # Disable quarantine dialogs for downloaded tools and models
+    LaunchServices.LSQuarantine = false;
+
+    CustomUserPreferences = {
+      # Never pop up "Do you want to use this disk with Time Machine?" when external NVMe is plugged in
+      "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
+    };
+
+    CustomSystemPreferences = {
+      # Suppress GUI crash reporter dialogs on headless server
+      "com.apple.CrashReporter".DialogType = "none";
+    };
+  };
 
   # Convenient authenticated reboot helper for FileVault
   environment.systemPackages = [
@@ -53,7 +69,11 @@
     # 2. Remote Access: Ensure SSH daemon is enabled
     /usr/sbin/systemsetup -setremotelogin on || true
 
-    # 3. VRAM Allocation Ceiling: Raise Metal allocation limit immediately without requiring reboot
+    # 3. Developer Tools: Authorize debuggers/profilers and add user to _developer group without GUI prompts
+    /usr/sbin/DevToolsSecurity -enable || true
+    /usr/sbin/dseditgroup -o edit -a "${config.system.primaryUser}" -t user _developer 2>/dev/null || true
+
+    # 4. VRAM Allocation Ceiling: Raise Metal allocation limit immediately without requiring reboot
     mem_bytes=$(/usr/sbin/sysctl -n hw.memsize)
     mem_mb=$(( mem_bytes / 1024 / 1024 ))
     wired_limit_mb=$(( mem_mb * 88 / 100 ))

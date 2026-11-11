@@ -15,59 +15,89 @@ let
   kokoroCpuServer = pkgs.writeScriptBin "kokoro-cpu-server" ''
     #!/opt/homebrew/opt/omlx/libexec/bin/python3
     import io
+    import json
     import os
     import threading
-    import time
-
-    # Force all MLX operations onto CPU + AMX coprocessor (never touch Metal GPU)
-    os.environ["MLX_DEFAULT_DEVICE"] = "cpu"
-    import mlx.core as mx
-    mx.set_default_device(mx.cpu)
 
     import numpy as np
+    import onnxruntime as ort
     import soundfile as sf
     import uvicorn
     from fastapi import FastAPI, HTTPException
     from fastapi.responses import Response
+    from misaki import en
     from pydantic import BaseModel
-    from mlx_audio.tts.utils import load_model
 
     MODEL_PATH = "${ttsModelPath}"
+    ONNX_FILE = os.path.join(MODEL_PATH, "onnx", "model_quantized.onnx")
+    TOKENIZER_FILE = os.path.join(MODEL_PATH, "tokenizer.json")
+    VOICES_DIR = os.path.join(MODEL_PATH, "voices")
     DEFAULT_VOICE = "${cfg.tts.defaultVoice}"
     SAMPLE_RATE = 24000
 
-    app = FastAPI(title="Kokoro CPU TTS Server")
+    app = FastAPI(title="Kokoro ONNX CPU TTS Server")
     _lock = threading.Lock()
-    _model = None
+    _sess = None
+    _in_names = []
+    _vocab = {}
+    _voices = {}
+    _g2p_us = None
+    _g2p_gb = None
 
     class SpeechRequest(BaseModel):
-        model: str = "Kokoro-82M-bf16"
+        model: str = "Kokoro-82M-ONNX"
         input: str
         voice: str = DEFAULT_VOICE
         response_format: str = "wav"
         speed: float = 1.0
 
-    def _infer_lang_code(voice: str) -> str:
-        if voice and len(voice) >= 3 and voice[2] == "_" and voice[0] in "abefhijpz":
-            return voice[0]
-        return "a"
+    def _load_voice(voice_name: str) -> np.ndarray:
+        if voice_name in _voices:
+            return _voices[voice_name]
+        vpath = os.path.join(VOICES_DIR, f"{voice_name}.bin")
+        if not os.path.isfile(vpath):
+            vpath = os.path.join(VOICES_DIR, f"{DEFAULT_VOICE}.bin")
+        pack = np.fromfile(vpath, dtype=np.float32).reshape(-1, 1, 256)
+        _voices[voice_name] = pack
+        return pack
+
+    def _synthesize_clause(text: str, voice: str, speed: float) -> np.ndarray:
+        g2p = _g2p_gb if (voice and voice.startswith("b")) else _g2p_us
+        phonemes, _ = g2p(text)
+        tokens = [_vocab[c] for c in phonemes if c in _vocab]
+        if not tokens:
+            return np.zeros(0, dtype=np.float32)
+        tokens = tokens[:510]
+        input_ids = np.array([[0, *tokens, 0]], dtype=np.int64)
+        pack = _load_voice(voice)
+        style = pack[min(len(tokens), len(pack) - 1)]
+        spd = np.array([speed], dtype=np.float32)
+        with _lock:
+            out = _sess.run(None, {_in_names[0]: input_ids, _in_names[1]: style, _in_names[2]: spd})[0]
+        return np.asarray(out, dtype=np.float32).flatten()
 
     @app.on_event("startup")
     def startup_event():
-        global _model
-        mx.set_default_device(mx.cpu)
-        if not os.path.isdir(MODEL_PATH):
-            raise RuntimeError(f"TTS model path {MODEL_PATH} does not exist yet.")
-        _model = load_model(MODEL_PATH, strict=False)
-        # Warm-up CPU synthesis pass so first request is instant
-        for res in _model.generate(text="Warmup.", voice=DEFAULT_VOICE, speed=1.0, lang_code="a", verbose=False):
-            mx.eval(res.audio)
+        global _sess, _in_names, _vocab, _g2p_us, _g2p_gb
+        if not os.path.isfile(ONNX_FILE):
+            raise RuntimeError(f"ONNX model {ONNX_FILE} not found.")
+        with open(TOKENIZER_FILE, encoding="utf-8") as f:
+            _vocab = json.load(f)["model"]["vocab"]
+        _g2p_us = en.G2P(trf=False, british=False, fallback=None)
+        _g2p_gb = en.G2P(trf=False, british=True, fallback=None)
+        sess_opts = ort.SessionOptions()
+        sess_opts.intra_op_num_threads = 10
+        sess_opts.inter_op_num_threads = 1
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        _sess = ort.InferenceSession(ONNX_FILE, sess_options=sess_opts, providers=["CPUExecutionProvider"])
+        _in_names = [i.name for i in _sess.get_inputs()]
+        _synthesize_clause("Warmup.", DEFAULT_VOICE, 1.0)
 
     @app.get("/health")
     def health():
         return {
-            "status": "ok" if _model is not None else "loading",
-            "device": str(mx.default_device()),
+            "status": "ok" if _sess is not None else "loading",
+            "device": "CPUExecutionProvider (10 P-cores / Accelerate AMX)",
             "model": os.path.basename(MODEL_PATH),
         }
 
@@ -79,41 +109,24 @@ let
                 {
                     "id": os.path.basename(MODEL_PATH),
                     "object": "model",
-                    "owned_by": "kokoro-cpu",
-                    "device": str(mx.default_device()),
+                    "owned_by": "kokoro-onnx-cpu",
+                    "device": "CPUExecutionProvider",
                 }
             ],
         }
 
     @app.post("/v1/audio/speech")
     def create_speech(req: SpeechRequest):
-        if _model is None:
+        if _sess is None:
             raise HTTPException(status_code=503, detail="TTS model not loaded")
         if not req.input.strip():
             raise HTTPException(status_code=400, detail="input text must not be empty")
 
         voice = req.voice or DEFAULT_VOICE
-        lang_code = _infer_lang_code(voice)
-
-        with _lock:
-            mx.set_default_device(mx.cpu)
-            chunks = []
-            for res in _model.generate(
-                text=req.input,
-                voice=voice,
-                speed=req.speed,
-                lang_code=lang_code,
-                verbose=False,
-            ):
-                audio = res.audio
-                if isinstance(audio, mx.array) and audio.dtype == mx.bfloat16:
-                    audio = audio.astype(mx.float32)
-                chunks.append(np.array(audio, dtype=np.float32).flatten())
-
-        if not chunks:
+        waveform = _synthesize_clause(req.input, voice, req.speed)
+        if waveform.size == 0:
             raise HTTPException(status_code=500, detail="TTS produced no audio")
 
-        waveform = np.concatenate(chunks, axis=0)
         waveform = np.clip(waveform, -1.0, 1.0)
         fmt = (req.response_format or "wav").lower()
 
@@ -211,10 +224,14 @@ let
 
     ${lib.optionalString cfg.tts.enable ''
       echo ""
-      echo "--- [3/3] Syncing CPU TTS Model (Kokoro :${toString cfg.tts.port}) ---"
+      echo "--- [3/3] Syncing CPU TTS Model (Kokoro ONNX :${toString cfg.tts.port}) ---"
       echo ">>> Syncing ${cfg.tts.model} -> ${ttsModelPath} ..."
       ${pkgs.uv}/bin/uvx --from "huggingface_hub" hf download \
         "${cfg.tts.model}" \
+        --include "onnx/model_quantized.onnx" \
+        --include "tokenizer.json" \
+        --include "config.json" \
+        --include "voices/*" \
         --local-dir "${ttsModelPath}"
       echo ">>> Verified CPU TTS model."
     ''}
@@ -462,8 +479,8 @@ in
       };
       modelVariant = lib.mkOption {
         type = lib.types.str;
-        default = "openai_whisper-large-v3_turbo";
-        description = "CoreML Whisper model subfolder in argmaxinc/whisperkit-coreml.";
+        default = "openai_whisper-large-v3-v20240930_turbo_632MB";
+        description = "CoreML Whisper model subfolder in argmaxinc/whisperkit-coreml (632MB LUT-palettized for ANE SRAM).";
       };
       tokenizerRepo = lib.mkOption {
         type = lib.types.str;
@@ -476,7 +493,7 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
-        description = "Enable Kokoro TTS server pinned to CPU + AMX coprocessor.";
+        description = "Enable Kokoro ONNX TTS server pinned to CPU + AMX coprocessor.";
       };
       port = lib.mkOption {
         type = lib.types.port;
@@ -485,8 +502,8 @@ in
       };
       model = lib.mkOption {
         type = lib.types.str;
-        default = "mlx-community/Kokoro-82M-bf16";
-        description = "Hugging Face repository for Kokoro TTS model.";
+        default = "onnx-community/Kokoro-82M-v1.0-ONNX";
+        description = "Hugging Face repository for Kokoro ONNX TTS model.";
       };
       defaultVoice = lib.mkOption {
         type = lib.types.str;
@@ -602,8 +619,8 @@ in
           ''
             set -euo pipefail
 
-            if [ ! -d "${sttModelPath}/AudioEncoder.mlmodelc" ]; then
-              echo "[whisperkit-stt] CoreML bundle not yet downloaded at ${sttModelPath}. Waiting for sync..." >&2
+            if [ ! -f "${sttModelPath}/TextDecoder.mlmodelc/weights/weight.bin" ] || [ ! -f "${sttModelPath}/tokenizer.json" ]; then
+              echo "[whisperkit-stt] CoreML bundle not yet fully downloaded at ${sttModelPath}. Waiting for sync..." >&2
               sleep 10
               exit 1
             fi
@@ -613,7 +630,8 @@ in
               --port "${toString cfg.stt.port}" \
               --model-path "${sttModelPath}" \
               --audio-encoder-compute-units cpuAndNeuralEngine \
-              --text-decoder-compute-units cpuAndNeuralEngine
+              --text-decoder-compute-units cpuAndNeuralEngine \
+              --without-timestamps
           ''
         ];
         RunAtLoad = true;
@@ -638,8 +656,8 @@ in
           ''
             set -euo pipefail
 
-            if [ ! -f "${ttsModelPath}/config.json" ]; then
-              echo "[kokoro-tts] Kokoro weights not yet downloaded at ${ttsModelPath}. Waiting for sync..." >&2
+            if [ ! -f "${ttsModelPath}/onnx/model_quantized.onnx" ]; then
+              echo "[kokoro-tts] Kokoro ONNX weights not yet downloaded at ${ttsModelPath}. Waiting for sync..." >&2
               sleep 10
               exit 1
             fi

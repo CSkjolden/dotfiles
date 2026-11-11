@@ -19,13 +19,13 @@
     ];
     stt = {
       enable = true;
-      port = 8001; # Apple Neural Engine (CoreML): Whisper Large v3 Turbo
-      modelVariant = "openai_whisper-large-v3_turbo";
+      port = 8001; # Apple Neural Engine (CoreML): Whisper Large v3 Turbo (632MB palettized ANE)
+      modelVariant = "openai_whisper-large-v3-v20240930_turbo_632MB";
     };
     tts = {
       enable = true;
-      port = 8002; # CPU + AMX Coprocessor: Kokoro-82M-bf16
-      model = "mlx-community/Kokoro-82M-bf16";
+      port = 8002; # CPU + AMX Coprocessor: Kokoro-82M ONNX (CPUExecutionProvider)
+      model = "onnx-community/Kokoro-82M-v1.0-ONNX";
     };
   };
 }

@@ -13,6 +13,10 @@
     CustomUserPreferences = {
       # Never pop up "Do you want to use this disk with Time Machine?" when external NVMe is plugged in
       "com.apple.TimeMachine".DoNotOfferNewDisksForBackup = true;
+
+      # Disable Siri and Assistant daemons on headless server to save unified memory
+      "com.apple.Siri".StatusMenuVisible = false;
+      "com.apple.assistant.support"."Assistant Enabled" = false;
     };
 
     CustomSystemPreferences = {
@@ -85,5 +89,19 @@
     elif /usr/sbin/sysctl iogpu.wired_mem_limit >/dev/null 2>&1; then
       /usr/sbin/sysctl -w iogpu.wired_mem_limit="$(( mem_bytes * 88 / 100 ))" || true
     fi
+
+    # 5. Headless Memory Sweep: Disable background daemons that waste unified memory
+    # Spotlight: Prevent mds_stores and mdworker from indexing 30GB+ of weights and millions of KV cache blocks
+    touch /Volumes/StudioStorage/.metadata_never_index 2>/dev/null || true
+    /usr/bin/mdutil -i off /Volumes/StudioStorage 2>/dev/null || true
+
+    # Disable local APFS Time Machine snapshots that pin dirty memory pages
+    /usr/bin/tmutil disablelocal 2>/dev/null || true
+
+    # Disable background AirPlay receiver daemon
+    /usr/bin/defaults write /Library/Preferences/com.apple.airplay.plist "AirPlayReceiverEnabled" -bool false 2>/dev/null || true
+
+    # Purge inactive disk cache pages
+    /usr/sbin/purge 2>/dev/null || true
   '';
 }

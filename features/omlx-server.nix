@@ -81,8 +81,7 @@ let
     echo "Host:   ${cfg.host}:${toString cfg.port}"
     echo ""
     echo "--- Available Models ---"
-    API_KEY="$(cat "${apiKeyPath}" 2>/dev/null || true)"
-    MODELS="$(curl -s -H "Authorization: Bearer $API_KEY" "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null || true)"
+    MODELS="$(curl -s "http://127.0.0.1:${toString cfg.port}/v1/models" | ${pkgs.jq}/bin/jq -r '.data[].id' 2>/dev/null || true)"
     if [ -n "$MODELS" ]; then
       echo "$MODELS"
     else
@@ -94,6 +93,9 @@ let
     version = "1.0";
     auth = {
       allow_unauthenticated_inference = cfg.auth.allowUnauthenticatedInference;
+    };
+    idle_timeout = {
+      idle_timeout_seconds = 0; # Never unload models due to inactivity on dedicated server
     };
     integrations = {
       markitdown_enabled = cfg.integrations.markitdown.enable;
@@ -107,6 +109,15 @@ let
       splash_ane_prefill = cfg.integrations.splash.neuralEnginePrefill;
     };
   } cfg.extraSettings;
+
+  pinnedModelRecords = lib.genAttrs (map (m: builtins.baseNameOf m) cfg.pinnedModels) (_: {
+    is_pinned = true;
+  });
+
+  mergedModelSettings = {
+    version = 1;
+    models = pinnedModelRecords;
+  };
 in
 {
   imports = [
@@ -137,10 +148,18 @@ in
     models = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "Jundot/clef-flash-oQ4e"
+        "Jundot/d3-nano-oQ8e"
         "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
       ];
       description = "Hugging Face model repositories to declaratively maintain on the external storage.";
+    };
+
+    pinnedModels = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
+      ];
+      description = "Models to pre-load on boot and pin permanently in unified memory (never evicted).";
     };
 
     hotCacheGb = lib.mkOption {
@@ -356,8 +375,18 @@ in
         echo "$NIX_SETTINGS" > "$SETTINGS_FILE"
       fi
 
+      # Deep-merge pinned model settings into ~/.omlx/model_settings.json
+      MODEL_SETTINGS_FILE="$SETTINGS_DIR/model_settings.json"
+      NIX_MODEL_SETTINGS='${builtins.toJSON mergedModelSettings}'
+      if [ -f "$MODEL_SETTINGS_FILE" ]; then
+        ${pkgs.jq}/bin/jq -s '.[0] * .[1]' "$MODEL_SETTINGS_FILE" <(echo "$NIX_MODEL_SETTINGS") > "$MODEL_SETTINGS_FILE.tmp"
+        mv "$MODEL_SETTINGS_FILE.tmp" "$MODEL_SETTINGS_FILE"
+      else
+        echo "$NIX_MODEL_SETTINGS" > "$MODEL_SETTINGS_FILE"
+      fi
+
       chown -R ${user}:staff "$SETTINGS_DIR"
-      chmod 600 "$SETTINGS_FILE"
+      chmod 600 "$SETTINGS_FILE" "$MODEL_SETTINGS_FILE"
 
       # Kickstart services immediately after switch
       /bin/launchctl kickstart -k system/ai.omlx.server || true

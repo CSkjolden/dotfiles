@@ -5,8 +5,23 @@ let
   user = config.system.primaryUser;
   ttsModelPath = "${aiCfg.storageDir}/tts_models/${builtins.baseNameOf cfg.model}";
 
-  kokoroCpuServer = pkgs.writeShellScriptBin "kokoro-cpu-server" ''
-    exec /opt/homebrew/opt/omlx/libexec/bin/python3 ${./kokoro_cpu_server.py} "$@"
+  kokoroCpuServer = pkgs.runCommandCC "kokoro-cpu-server" {
+    nativeBuildInputs = [ pkgs.rustc ];
+    buildInputs = [ pkgs.onnxruntime pkgs.espeak-ng ];
+  } ''
+    mkdir -p $out/bin
+    $CC -O3 -c ${./kokoro_ffi.c} \
+      -I${pkgs.onnxruntime.dev}/include \
+      -I${pkgs.espeak-ng}/include \
+      -o kokoro_ffi.o
+    ar rcs libkokoro_ffi.a kokoro_ffi.o
+    ${pkgs.rustc}/bin/rustc -C opt-level=3 ${./kokoro_cpu_server.rs} \
+      -L . -l static=kokoro_ffi \
+      -L ${pkgs.onnxruntime}/lib -l onnxruntime \
+      -L ${pkgs.espeak-ng}/lib -l espeak-ng \
+      -C link-arg=-Wl,-rpath,${pkgs.onnxruntime}/lib \
+      -C link-arg=-Wl,-rpath,${pkgs.espeak-ng}/lib \
+      -o $out/bin/kokoro-cpu-server
   '';
 in
 {
@@ -60,6 +75,8 @@ in
               exit 1
             fi
 
+            ORT_LIB="$(ls /opt/homebrew/opt/omlx/libexec/lib/python*/site-packages/onnxruntime/capi/libonnxruntime.*.dylib 2>/dev/null | head -n 1 || true)"
+            export ORT_DYLIB_PATH="''${ORT_LIB}"
             exec ${kokoroCpuServer}/bin/kokoro-cpu-server
           ''
         ];
@@ -73,7 +90,6 @@ in
           KOKORO_PORT = toString cfg.port;
           KOKORO_DEFAULT_VOICE = cfg.defaultVoice;
           KOKORO_DEFAULT_SPEED = toString cfg.defaultSpeed;
-          MLX_DEFAULT_DEVICE = "cpu";
           HOME = "/Users/${user}";
           PATH = "/opt/homebrew/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
         };

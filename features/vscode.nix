@@ -6,6 +6,8 @@
 
   home-manager.sharedModules = [
     ({ pkgs, ... }: {
+      programs.git.settings.core.editor = "code --wait";
+
       programs.vscode = {
         enable = true;
         # Homebrew owns the app; wrap its CLI so Nix can still regen extensions.json

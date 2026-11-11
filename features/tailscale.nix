@@ -1,0 +1,28 @@
+{ ... }:
+{
+  homebrew.brews = [
+    "tailscale"
+  ];
+
+  # Run tailscaled as a native system daemon before user login
+  launchd.daemons.tailscaled = {
+    serviceConfig = {
+      Label = "com.tailscale.tailscaled";
+      ProgramArguments = [
+        "/opt/homebrew/bin/tailscaled"
+        "--state=/var/lib/tailscale/tailscaled.state"
+        "--socket=/var/run/tailscale/tailscaled.sock"
+        "--port=41641"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardErrorPath = "/var/log/tailscaled.log";
+      StandardOutPath = "/var/log/tailscaled.log";
+    };
+  };
+
+  system.activationScripts.postActivation.text = ''
+    mkdir -p /var/lib/tailscale /var/run/tailscale
+    chmod 700 /var/lib/tailscale /var/run/tailscale
+  '';
+}

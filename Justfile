@@ -1,5 +1,6 @@
-set shell := ["zsh", "-eu", "-c"]
-rebuild := `command -v darwin-rebuild >/dev/null 2>&1 && echo darwin-rebuild || echo "nix run nix-darwin --"`
+set shell := ["bash", "-eu", "-c"]
+os := `uname -s`
+rebuild := `[ "$(uname -s)" = "Darwin" ] && (command -v darwin-rebuild >/dev/null 2>&1 && echo darwin-rebuild || echo "nix run nix-darwin --") || (command -v nixos-rebuild >/dev/null 2>&1 && echo nixos-rebuild || echo "nix run home-manager --")`
 
 default:
     @just --list
@@ -11,12 +12,24 @@ hooks-install:
 
 # Sync with dotfiles config
 sync profile: _git-add _brew-update
-    sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure
+    if [ "{{os}}" = "Darwin" ]; then \
+        sudo USER="$(id -un)" HOME="$HOME" {{rebuild}} switch --flake .#{{profile}} --impure; \
+    elif command -v nixos-rebuild >/dev/null 2>&1; then \
+        sudo nixos-rebuild switch --flake .#{{profile}}; \
+    else \
+        nix run home-manager -- switch --flake .#{{profile}}; \
+    fi
 
 # Update nixpkgs (or another flake input) and verify the profile builds, without switching
 update profile input="nixpkgs": _git-add
     nix flake update {{input}}
-    nix build '.#darwinConfigurations.{{profile}}.system' --impure --no-link
+    if [ "{{os}}" = "Darwin" ]; then \
+        nix build '.#darwinConfigurations.{{profile}}.system' --impure --no-link; \
+    elif command -v nixos-rebuild >/dev/null 2>&1; then \
+        nix build '.#nixosConfigurations.{{profile}}.config.system.build.toplevel' --no-link; \
+    else \
+        nix build '.#homeConfigurations.{{profile}}.activationPackage' --no-link; \
+    fi
     @echo "Build OK. Review with 'git diff flake.lock', then 'just sync {{profile}}' and commit flake.lock."
 
 [private]

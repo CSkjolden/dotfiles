@@ -16,7 +16,7 @@
         ignores = [ ".DS_Store" ];
 
         settings = {
-          core.editor = "code --wait";
+          core.editor = lib.mkDefault "nano";
           core.pager = "less -FRX";
           init.defaultBranch = "main";
           pull.rebase = false;

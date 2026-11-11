@@ -1,5 +1,6 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 set -euo pipefail
+shopt -s globstar nullglob
 cd "$(dirname "$0")"
 
 check_flake() {

@@ -11,8 +11,8 @@
         provider = {
           omlx = {
             npm = "@ai-sdk/openai-compatible";
-            name = "oMLX (local)";
-            options.baseURL = "http://localhost:8000/v1";
+            name = "oMLX (Mac Studio)";
+            options.baseURL = "http://skjolds-mac-studio:8000/v1";
           };
         };
       };

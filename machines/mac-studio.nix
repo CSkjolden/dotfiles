@@ -22,9 +22,9 @@
         "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
       ];
       pinnedModels = [
-        "Jundot/d3-nano-oQ8e"
         "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
       ];
+      memoryGuardGb = 34.0;
     };
 
     stt = {

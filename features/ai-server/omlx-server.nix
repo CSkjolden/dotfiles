@@ -26,11 +26,32 @@ let
       preserve_mid_system_cache = true;
       gpu_keep_warm_interval = 0.5;
     };
+    model = {
+      model_dirs = [ modelsDir ];
+      model_dir = modelsDir;
+    };
+    memory = {
+      prefill_memory_guard = true;
+      memory_guard_tier = if cfg.memoryGuardGb != null then "custom" else cfg.memoryGuard;
+      memory_guard_custom_ceiling_gb = if cfg.memoryGuardGb != null then cfg.memoryGuardGb else 0.0;
+      soft_threshold = 0.92;
+      hard_threshold = 0.97;
+      prefill_safe_zone_ratio = 0.92;
+      prefill_min_chunk_tokens = 32;
+    };
     scheduler = {
       max_concurrent_requests = cfg.maxConcurrentRequests;
       chunked_prefill = true;
       decode_fairness = true;
-      prefill_priority = "speed";
+      prefill_priority = "context";
+    };
+    cache = {
+      enabled = true;
+      ssd_cache_dir = kvCacheDir;
+      ssd_cache_max_size = "${toString cfg.ssdCacheGb}GB";
+      hot_cache_max_size = "${toString cfg.hotCacheGb}GB";
+      hot_cache_write_through = true;
+      initial_cache_blocks = cfg.initialCacheBlocks;
     };
     auth = {
       allow_unauthenticated_inference = cfg.allowUnauthenticatedInference;
@@ -54,12 +75,18 @@ let
   mergedSettings = lib.recursiveUpdate defaultSettings cfg.settings;
 
   defaultModelName = if cfg.defaultModel != null then builtins.baseNameOf cfg.defaultModel else null;
+  pinnedNames = map builtins.baseNameOf cfg.pinnedModels;
+  allModelNames = lib.unique ((map builtins.baseNameOf cfg.models) ++ pinnedNames);
 
-  pinnedModelRecords = lib.genAttrs (map builtins.baseNameOf cfg.pinnedModels) (name:
-    { is_pinned = true; }
+  pinnedModelRecords = lib.genAttrs allModelNames (name:
+    { is_pinned = builtins.elem name pinnedNames; }
     // lib.optionalAttrs (name == defaultModelName) {
       is_default = true;
       mtp_enabled = true;
+      turboquant_kv_enabled = true;
+      turboquant_kv_scheme = "affine8";
+      turboquant_kv_bits = 8;
+      turboquant_skip_last = true;
     }
   );
 
@@ -106,7 +133,7 @@ in
 
     hotCacheGb = lib.mkOption {
       type = lib.types.int;
-      default = 4;
+      default = 1;
       description = "RAM cache size in GB for hot prefix KV blocks.";
     };
 
@@ -118,7 +145,7 @@ in
 
     initialCacheBlocks = lib.mkOption {
       type = lib.types.int;
-      default = 512;
+      default = 64;
       description = "Pre-allocated Metal cache blocks at startup.";
     };
 
@@ -132,6 +159,12 @@ in
       type = lib.types.enum [ "off" "safe" "balanced" "aggressive" ];
       default = "aggressive";
       description = "Memory guard tier for macOS unified memory pressure management.";
+    };
+
+    memoryGuardGb = lib.mkOption {
+      type = lib.types.nullOr lib.types.float;
+      default = null;
+      description = "Explicit custom memory ceiling in GB (sets memory_guard_tier = custom and bypasses conservative vm_stat dynamic double-subtraction on dedicated headless servers).";
     };
 
     allowUnauthenticatedInference = lib.mkOption {
@@ -163,7 +196,13 @@ in
             set -euo pipefail
 
             if [ ! -d "${aiCfg.storageDir}" ]; then
+              /usr/sbin/diskutil mount "${builtins.baseNameOf aiCfg.storageDir}" >/dev/null 2>&1 || true
+              sleep 2
+            fi
+
+            if [ ! -d "${aiCfg.storageDir}" ]; then
               echo "[omlx] ${aiCfg.storageDir} not mounted. Waiting..." >&2
+              sleep 10
               exit 1
             fi
 
@@ -187,7 +226,7 @@ in
               --hot-cache-write-through \
               --initial-cache-blocks "${toString cfg.initialCacheBlocks}" \
               --max-concurrent-requests "${toString cfg.maxConcurrentRequests}" \
-              --memory-guard "${cfg.memoryGuard}" \
+              ${if cfg.memoryGuardGb != null then ''--memory-guard-gb "${toString cfg.memoryGuardGb}"'' else ''--memory-guard "${cfg.memoryGuard}"''} \
               --api-key "$API_KEY"
           ''
         ];
@@ -234,6 +273,12 @@ in
 
       chown -R ${user}:staff "$SETTINGS_DIR"
       chmod 600 "$SETTINGS_FILE" "$MODEL_SETTINGS_FILE"
+
+      # Ensure Homebrew's user LaunchAgent never conflicts with system/ai.omlx.server on :8000
+      uid=$(id -u "${user}")
+      /bin/launchctl bootout "gui/$uid/sh.brew.omlx" 2>/dev/null || true
+      /bin/launchctl bootout "user/$uid/sh.brew.omlx" 2>/dev/null || true
+      rm -f "/Users/${user}/Library/LaunchAgents/sh.brew.omlx.plist"
 
       /bin/launchctl kickstart -k system/ai.omlx.server || true
     '';

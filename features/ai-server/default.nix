@@ -179,6 +179,24 @@ in
       statusScript
     ];
 
+    # Root boot daemon to ensure external AI storage volume is mounted even without a GUI login
+    launchd.daemons.ai-storage-mount = {
+      serviceConfig = {
+        Label = "ai.storage.mount";
+        ProgramArguments = [
+          "/bin/sh"
+          "-c"
+          ''
+            /usr/bin/defaults write /Library/Preferences/SystemConfiguration/autodiskmount AutomountDisksWithoutUserLogin -bool true 2>/dev/null || true
+            if [ ! -d "${aiCfg.storageDir}" ]; then
+              /usr/sbin/diskutil mount "${builtins.baseNameOf aiCfg.storageDir}" >/dev/null 2>&1 || true
+            fi
+          ''
+        ];
+        RunAtLoad = true;
+      };
+    };
+
     # Background model sync service: runs once on boot or activation without blocking server startup
     launchd.daemons.ai-models-sync = {
       serviceConfig = {
@@ -209,6 +227,11 @@ in
     };
 
     system.activationScripts.postActivation.text = ''
+      /usr/bin/defaults write /Library/Preferences/SystemConfiguration/autodiskmount AutomountDisksWithoutUserLogin -bool true 2>/dev/null || true
+      if [ ! -d "${aiCfg.storageDir}" ]; then
+        /usr/sbin/diskutil mount "${builtins.baseNameOf aiCfg.storageDir}" >/dev/null 2>&1 || true
+      fi
+
       touch /var/log/ai-models-sync.log
       chown ${user}:staff /var/log/ai-models-sync.log
       /bin/launchctl kickstart -k system/ai.models.sync || true

@@ -210,6 +210,8 @@ in
       "com.apple.SubmitDiagInfo".AutoSubmit = false;
       # Disable automatic login so headless boots stay at lightweight loginwindow (~1.5GB RAM saved)
       "com.apple.loginwindow".autoLoginUser = "";
+      # Automatically mount external APFS/USB storage (e.g. /Volumes/StudioStorage) at headless boot without requiring a logged-in GUI user
+      "/Library/Preferences/SystemConfiguration/autodiskmount".AutomountDisksWithoutUserLogin = true;
     };
   };
 
@@ -234,6 +236,7 @@ in
         echo "(SSH and launchd system daemons like tailscaled and omlx will stay online)"
         sudo /bin/launchctl bootout gui/"$(id -u ${user})" 2>/dev/null || true
         sleep 2
+        sudo /usr/sbin/diskutil mount StudioStorage >/dev/null 2>&1 || true
       fi
 
       echo "=== Mac Studio Unified Memory Report ==="
@@ -281,9 +284,8 @@ in
         "-c"
         ''
           mem_bytes=$(/usr/sbin/sysctl -n hw.memsize)
-          mem_mb=$(( mem_bytes / 1024 / 1024 ))
-          # 95% of physical RAM (leaves 5% for XNU kernel to prevent jetsam, matching oMLX recommendation)
-          wired_limit_mb=$(( mem_mb - (mem_mb / 20) ))
+          # 95% of physical RAM floored to whole MiB (matches oMLX _wired_limit_suggestion_bytes)
+          wired_limit_mb=$(( (mem_bytes - (mem_bytes / 20)) / 1048576 ))
 
           if /usr/sbin/sysctl iogpu.wired_limit_mb >/dev/null 2>&1; then
             /usr/sbin/sysctl -w iogpu.wired_limit_mb="$wired_limit_mb" || true
@@ -311,8 +313,7 @@ in
 
     # 4. VRAM Allocation Ceiling: Raise Metal allocation limit to 95% of RAM immediately
     mem_bytes=$(/usr/sbin/sysctl -n hw.memsize)
-    mem_mb=$(( mem_bytes / 1024 / 1024 ))
-    wired_limit_mb=$(( mem_mb - (mem_mb / 20) ))
+    wired_limit_mb=$(( (mem_bytes - (mem_bytes / 20)) / 1048576 ))
 
     if /usr/sbin/sysctl iogpu.wired_limit_mb >/dev/null 2>&1; then
       /usr/sbin/sysctl -w iogpu.wired_limit_mb="$wired_limit_mb" || true

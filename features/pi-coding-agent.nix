@@ -25,7 +25,10 @@ in
         mkdir -p "$(dirname "$settings")"
         [ -f "$settings" ] || echo '{}' > "$settings"
         ${pkgs.jq}/bin/jq --argjson pkgs '${builtins.toJSON piPackages}' \
-          '.packages = ((.packages // []) + $pkgs | unique)' "$settings" > "$settings.tmp" \
+          '.packages = ((.packages // []) + $pkgs | unique)
+           | .defaultProvider = (.defaultProvider // "omlx")
+           | .defaultModel = (.defaultModel // "Qwen3.6-35B-A3B-oQ4e-mtp")' \
+          "$settings" > "$settings.tmp" \
           && mv "$settings.tmp" "$settings"
       '';
 
@@ -44,9 +47,25 @@ in
       home.file.".pi/agent/models.json".source = (pkgs.formats.json { }).generate "pi-models.json" {
         "$schema" = "https://pi.dev/schemas/models.schema.json";
         providers.omlx = {
-          baseUrl = "http://localhost:8000/v1";
+          name = "oMLX (Mac Studio)";
+          baseUrl = "http://skjolds-mac-studio:8000/v1";
           api = "openai-completions";
           apiKey = "omlx"; # dummy key; local server ignores it
+          models = [
+            {
+              id = "Qwen3.6-35B-A3B-oQ4e-mtp";
+              name = "Qwen 3.6 35B-A3B (Mac Studio)";
+              reasoning = true;
+              input = [ "text" "image" ];
+              contextWindow = 262144;
+              maxTokens = 32768;
+              compat = {
+                thinkingFormat = "qwen-chat-template";
+                supportsThinkingTokenBudget = true;
+                thinkingTokenBudgetField = "thinking_budget_tokens";
+              };
+            }
+          ];
         };
       };
     })

@@ -208,9 +208,7 @@ in
       "com.apple.CrashReporter".DialogType = "none";
       # Disable Apple telemetry and diagnostic reporting
       "com.apple.SubmitDiagInfo".AutoSubmit = false;
-      # Disable automatic login so headless boots stay at lightweight loginwindow (~1.5GB RAM saved)
-      "com.apple.loginwindow".autoLoginUser = "";
-      # Automatically mount external APFS/USB storage (e.g. /Volumes/StudioStorage) at headless boot without requiring a logged-in GUI user
+      # Automatically mount external APFS/USB storage (e.g. /Volumes/StudioStorage) at headless boot
       "/Library/Preferences/SystemConfiguration/autodiskmount".AutomountDisksWithoutUserLogin = true;
     };
   };
@@ -231,14 +229,6 @@ in
 
     (pkgs.writeShellScriptBin "studio-mem" ''
       set -euo pipefail
-      if [ "''${1:-}" = "--kill-gui" ]; then
-        echo "Logging out idle local GUI desktop session (Aqua) to free ~1.5 GB unified memory..."
-        echo "(SSH and launchd system daemons like tailscaled and omlx will stay online)"
-        sudo /bin/launchctl bootout gui/"$(id -u ${user})" 2>/dev/null || true
-        sleep 2
-        sudo /usr/sbin/diskutil mount StudioStorage >/dev/null 2>&1 || true
-      fi
-
       echo "=== Mac Studio Unified Memory Report ==="
       total_bytes=$(/usr/sbin/sysctl -n hw.memsize)
       wired_limit_mb=$(/usr/sbin/sysctl -n iogpu.wired_limit_mb 2>/dev/null || echo 0)
@@ -264,11 +254,6 @@ in
       echo ""
       non_omlx_mb=$(ps -axo rss,comm | awk '!/omlx/ {sum+=$1} END {printf "%.0f", sum/1024}')
       echo "Total non-oMLX RSS:     ''${non_omlx_mb} MB"
-      if pgrep -q -u "${user}" Finder; then
-        echo ""
-        echo "NOTE: A local GUI desktop session (Finder/Dock/WindowServer) is currently logged in."
-        echo "      Run 'studio-mem --kill-gui' (or 'studio-reboot') to close the GUI session and reclaim ~1.5 GB RAM."
-      fi
       echo ""
       echo "--- Top 10 Processes by RSS ---"
       ps -axo rss,user,comm | awk 'NR>1 {rss[$2":"$3]+=$1} END {for (k in rss) printf "%8.1f MB  %s\n", rss[k]/1024, k}' | sort -rn | head -n 10

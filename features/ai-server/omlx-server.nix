@@ -91,7 +91,7 @@ let
   );
 
   mergedModelSettings = {
-    version = 1;
+    version = 2;
     models = pinnedModelRecords;
   };
 in
@@ -206,7 +206,13 @@ in
               exit 1
             fi
 
-            mkdir -p /var/lib/omlx "${modelsDir}" "${kvCacheDir}"
+            mkdir -p /var/lib/omlx "${modelsDir}" "${kvCacheDir}" 2>/dev/null || true
+
+            if ! ls "${modelsDir}" >/dev/null 2>&1; then
+              echo "[omlx] ${modelsDir} not yet readable (waiting for TCC / removable volume authorization)..." >&2
+              sleep 5
+              exit 1
+            fi
 
             if [ ! -f "${apiKeyPath}" ]; then
               /usr/bin/openssl rand -hex 24 > "${apiKeyPath}"

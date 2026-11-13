@@ -54,8 +54,8 @@ let
       initial_cache_blocks = cfg.initialCacheBlocks;
     };
     sampling = {
-      max_context_window = cfg.maxContextWindow;
-      max_context_window_policy = cfg.maxContextWindow;
+      max_context_window = 32768;
+      max_context_window_policy = null;
       max_tokens = 32768;
     };
     auth = {
@@ -95,7 +95,7 @@ let
       a8_prefill_enabled = false;
       turboquant_kv_enabled = true;
       turboquant_kv_scheme = "affine8";
-      turboquant_kv_bits = 8;
+      turboquant_kv_bits = 8.0;
       turboquant_skip_last = true;
     }
   );

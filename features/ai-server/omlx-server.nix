@@ -22,7 +22,7 @@ let
   defaultSettings = {
     version = "1.0";
     server = {
-      burst_decode_mode = "balanced";
+      burst_decode_mode = "aggressive";
       preserve_mid_system_cache = true;
       gpu_keep_warm_interval = 0.5;
     };
@@ -34,9 +34,9 @@ let
       prefill_memory_guard = true;
       memory_guard_tier = if cfg.memoryGuardGb != null then "custom" else cfg.memoryGuard;
       memory_guard_custom_ceiling_gb = if cfg.memoryGuardGb != null then cfg.memoryGuardGb else 0.0;
-      soft_threshold = 0.92;
-      hard_threshold = 0.97;
-      prefill_safe_zone_ratio = 0.92;
+      soft_threshold = 0.95;
+      hard_threshold = 0.98;
+      prefill_safe_zone_ratio = 0.95;
       prefill_min_chunk_tokens = 32;
     };
     scheduler = {
@@ -49,9 +49,14 @@ let
       enabled = true;
       ssd_cache_dir = kvCacheDir;
       ssd_cache_max_size = "${toString cfg.ssdCacheGb}GB";
-      hot_cache_max_size = "${toString cfg.hotCacheGb}GB";
-      hot_cache_write_through = true;
+      hot_cache_max_size = if cfg.hotCacheGb > 0 then "${toString cfg.hotCacheGb}GB" else "0";
+      hot_cache_write_through = cfg.hotCacheGb > 0;
       initial_cache_blocks = cfg.initialCacheBlocks;
+    };
+    sampling = {
+      max_context_window = cfg.maxContextWindow;
+      max_context_window_policy = cfg.maxContextWindow;
+      max_tokens = 32768;
     };
     auth = {
       allow_unauthenticated_inference = cfg.allowUnauthenticatedInference;
@@ -83,6 +88,11 @@ let
     // lib.optionalAttrs (name == defaultModelName) {
       is_default = true;
       mtp_enabled = true;
+      max_context_window = cfg.maxContextWindow;
+      max_tool_result_tokens = cfg.maxToolResultTokens;
+      thinking_budget_enabled = cfg.thinkingBudgetTokens != null;
+      thinking_budget_tokens = cfg.thinkingBudgetTokens;
+      a8_prefill_enabled = false;
       turboquant_kv_enabled = true;
       turboquant_kv_scheme = "affine8";
       turboquant_kv_bits = 8;
@@ -133,8 +143,8 @@ in
 
     hotCacheGb = lib.mkOption {
       type = lib.types.int;
-      default = 1;
-      description = "RAM cache size in GB for hot prefix KV blocks.";
+      default = 0;
+      description = "RAM cache size in GB for hot prefix KV blocks (0 disables in-process RAM cache and relies on NVMe SSD + macOS page cache).";
     };
 
     ssdCacheGb = lib.mkOption {
@@ -151,8 +161,26 @@ in
 
     maxConcurrentRequests = lib.mkOption {
       type = lib.types.int;
-      default = 4;
-      description = "Maximum concurrent inference requests.";
+      default = 1;
+      description = "Maximum concurrent inference requests (1 serializes large-context requests for full MTP speed and prevents multi-sequence KV OOMs).";
+    };
+
+    maxContextWindow = lib.mkOption {
+      type = lib.types.int;
+      default = 153600;
+      description = "Maximum context window in tokens (153600 = 150 Ki tokens = 75 x 2048-token paged KV cache blocks).";
+    };
+
+    thinkingBudgetTokens = lib.mkOption {
+      type = lib.types.nullOr lib.types.int;
+      default = 2048;
+      description = "Maximum thinking/reasoning tokens per turn before forcing </think> (null disables cap).";
+    };
+
+    maxToolResultTokens = lib.mkOption {
+      type = lib.types.nullOr lib.types.int;
+      default = 8192;
+      description = "Maximum tokens per individual tool result before line-boundary truncation (null disables cap).";
     };
 
     memoryGuard = lib.mkOption {
@@ -228,8 +256,8 @@ in
               --model-dir "${modelsDir}" \
               --paged-ssd-cache-dir "${kvCacheDir}" \
               --paged-ssd-cache-max-size "${toString cfg.ssdCacheGb}GB" \
-              --hot-cache-max-size "${toString cfg.hotCacheGb}GB" \
-              --hot-cache-write-through \
+              --hot-cache-max-size "${if cfg.hotCacheGb > 0 then "${toString cfg.hotCacheGb}GB" else "0"}" \
+              ${lib.optionalString (cfg.hotCacheGb > 0) "--hot-cache-write-through"} \
               --initial-cache-blocks "${toString cfg.initialCacheBlocks}" \
               --max-concurrent-requests "${toString cfg.maxConcurrentRequests}" \
               ${if cfg.memoryGuardGb != null then ''--memory-guard-gb "${toString cfg.memoryGuardGb}"'' else ''--memory-guard "${cfg.memoryGuard}"''} \

@@ -15,7 +15,10 @@
     omlx = {
       enable = true;
       port = 8000; # Metal GPU: Qwen 3.6 35B-A3B + d3-nano
-      maxConcurrentRequests = 4;
+      maxConcurrentRequests = 1;
+      maxContextWindow = 153600; # 150 Ki tokens (75 x 2048-token paged cache blocks)
+      thinkingBudgetTokens = 2048; # >99th percentile of normal coding turns (p50=140, p95=1046, p99=1892)
+      maxToolResultTokens = 8192; # Truncate individual runaway tool outputs at line boundary with <truncated/> tag
       defaultModel = "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp";
       models = [
         "Jundot/d3-nano-oQ8e"

@@ -295,8 +295,16 @@ in
       };
     };
 
+    # mas finds installed apps through Spotlight, which the headless sweep disables, so a masApps entry
+    # would reinstall Xcode on every sync. Install it once here instead.
+    homebrew.masApps = lib.mkForce { };
+
     # Metal toolchain is a separate download since Xcode 26; the oMLX formula aborts without it.
     system.activationScripts.extraActivation.text = ''
+      if [ ! -d /Applications/Xcode.app ]; then
+        echo >&2 "Installing Xcode from the App Store (needs an App Store sign-in)..."
+        sudo -u ${user} -H ${pkgs.mas}/bin/mas install 497799835 || echo >&2 "warning: Xcode install failed; sign in to the App Store and sync again"
+      fi
       if [ -d /Applications/Xcode.app ] && ! DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1; then
         echo >&2 "Downloading the Xcode Metal toolchain for oMLX custom kernels..."
         DEVELOPER_DIR=${xcodeDir} /usr/bin/xcodebuild -license accept || true

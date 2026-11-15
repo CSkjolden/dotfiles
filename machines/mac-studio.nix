@@ -28,6 +28,7 @@
         "Jundot/Qwen3.6-35B-A3B-oQ4e-mtp"
       ];
       memoryGuardGb = 34.0;
+      hotCacheGb = 2;
     };
 
     stt = {

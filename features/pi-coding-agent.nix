@@ -35,9 +35,10 @@ in
           && mv "$settings.tmp" "$settings"
       '';
 
-      # Global user-level instructions (~85 tokens) loaded into every Pi session.
+      # Global user-level instructions (~110 tokens) loaded into every Pi session.
       home.file.".pi/agent/AGENTS.md".text = ''
         - Search with `rg -n` before reading large files; use `read` with `offset` and `limit` instead of reading whole files over 200 lines.
+        - Before re-reading a file you already read this session, try `vcc_recall` or `rg -n` for the specific symbol.
         - Use unescaped `|` for alternation in `rg` (`rg -n "foo|bar"`), never `\|`.
         - For `edit`, always pass `path` as a top-level parameter (`{"path": "...", "edits": [{"oldText": "...", "newText": "..."}]}`), never inside `edits[]`.
         - Pass quiet flags (`-q` / `--quiet`) to test and build runners, and pipe large command outputs (`git diff`, `git log`) through `rg`, `head`, or `tail`.

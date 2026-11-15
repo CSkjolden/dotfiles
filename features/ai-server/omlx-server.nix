@@ -3,6 +3,7 @@ let
   aiCfg = config.services.aiServer;
   cfg = aiCfg.omlx;
   user = config.system.primaryUser;
+  xcodeDir = "/Applications/Xcode.app/Contents/Developer";
 
   modelsDir = "${aiCfg.storageDir}/models";
   kvCacheDir = "${aiCfg.storageDir}/omlx_kv_cache";
@@ -88,6 +89,7 @@ let
     // lib.optionalAttrs (name == defaultModelName) {
       is_default = true;
       mtp_enabled = true;
+      mtp_adaptive_max_depth = 5;
       max_context_window = cfg.maxContextWindow;
       max_tool_result_tokens = cfg.maxToolResultTokens;
       thinking_budget_enabled = cfg.thinkingBudgetTokens != null;
@@ -107,7 +109,7 @@ let
 in
 {
   imports = [
-    ../omlx.nix
+    ../xcode.nix # Xcode via the App Store, license, and xcode-select, needed to compile oMLX's Metal kernels
   ];
 
   options.services.aiServer.omlx = {
@@ -209,6 +211,23 @@ in
   };
 
   config = lib.mkIf (aiCfg.enable && cfg.enable) {
+    homebrew.taps = [
+      {
+        name = "jundot/omlx";
+        clone_target = "https://github.com/jundot/omlx";
+        trusted = true;
+      }
+    ];
+
+    # Server-only: native Metal kernels (Qwen3.5/3.6 fall back to slow generic paths without them).
+    # Needs full Xcode with the Metal toolchain; the workstation's plain install in features/omlx.nix does not.
+    homebrew.brews = [
+      {
+        name = "jundot/omlx/omlx";
+        args = [ "with-custom-kernel" ];
+      }
+    ];
+
     environment.systemPackages = [
       tokenScript
     ];
@@ -276,7 +295,25 @@ in
       };
     };
 
+    # Metal toolchain is a separate download since Xcode 26; the oMLX formula aborts without it.
+    system.activationScripts.extraActivation.text = ''
+      if [ -d /Applications/Xcode.app ] && ! DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1; then
+        echo >&2 "Downloading the Xcode Metal toolchain for oMLX custom kernels..."
+        DEVELOPER_DIR=${xcodeDir} /usr/bin/xcodebuild -license accept || true
+        DEVELOPER_DIR=${xcodeDir} /usr/bin/xcodebuild -downloadComponent MetalToolchain || echo >&2 "warning: Metal toolchain download failed"
+      fi
+    '';
+
     system.activationScripts.postActivation.text = ''
+      # One-time rebuild: brew bundle never rebuilds an already installed formula, so an oMLX
+      # installed without the kernels is reinstalled once the Metal compiler is available.
+      if [ -d /Applications/Xcode.app ] && DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1 \
+        && [ -f /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json ] \
+        && ! grep -q "with-custom-kernel" /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json; then
+        echo >&2 "Rebuilding oMLX with native custom kernels (takes a few minutes)..."
+        sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} HOMEBREW_NO_AUTO_UPDATE=1 /opt/homebrew/bin/brew reinstall jundot/omlx/omlx --with-custom-kernel \
+          || echo >&2 "warning: oMLX custom-kernel rebuild failed; keeping the existing install"
+      fi
       mkdir -p /var/lib/omlx
       chown -R ${user}:staff /var/lib/omlx
       chmod 700 /var/lib/omlx

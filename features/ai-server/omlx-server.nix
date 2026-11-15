@@ -305,7 +305,7 @@ in
         echo >&2 "Installing Xcode from the App Store (needs an App Store sign-in)..."
         sudo -u ${user} -H ${pkgs.mas}/bin/mas install 497799835 || echo >&2 "warning: Xcode install failed; sign in to the App Store and sync again"
       fi
-      if [ -d /Applications/Xcode.app ] && ! DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1; then
+      if [ -d /Applications/Xcode.app ] && ! sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1; then
         echo >&2 "Downloading the Xcode Metal toolchain for oMLX custom kernels..."
         DEVELOPER_DIR=${xcodeDir} /usr/bin/xcodebuild -license accept || true
         DEVELOPER_DIR=${xcodeDir} /usr/bin/xcodebuild -downloadComponent MetalToolchain || echo >&2 "warning: Metal toolchain download failed"
@@ -315,12 +315,15 @@ in
     system.activationScripts.postActivation.text = ''
       # One-time rebuild: brew bundle never rebuilds an already installed formula, so an oMLX
       # installed without the kernels is reinstalled once the Metal compiler is available.
-      if [ -d /Applications/Xcode.app ] && DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1 \
+      rm -f "$(/usr/bin/getconf DARWIN_USER_TEMP_DIR 2>/dev/null)xcrun_db" /private/var/tmp/xcrun_db 2>/dev/null || true
+      if [ -d /Applications/Xcode.app ] && sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1 \
         && [ -f /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json ] \
         && ! grep -q "with-custom-kernel" /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json; then
         echo >&2 "Rebuilding oMLX with native custom kernels (takes a few minutes)..."
         sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} HOMEBREW_NO_AUTO_UPDATE=1 /opt/homebrew/bin/brew reinstall jundot/omlx/omlx --with-custom-kernel \
           || echo >&2 "warning: oMLX custom-kernel rebuild failed; keeping the existing install"
+      else
+        echo >&2 "oMLX custom-kernel rebuild skipped (Xcode/Metal compiler missing, or kernels already built)"
       fi
       mkdir -p /var/lib/omlx
       chown -R ${user}:staff /var/lib/omlx

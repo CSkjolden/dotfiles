@@ -25,8 +25,24 @@ in
         mkdir -p "$(dirname "$settings")"
         [ -f "$settings" ] || echo '{}' > "$settings"
         ${pkgs.jq}/bin/jq --argjson pkgs '${builtins.toJSON piPackages}' \
-          '.packages = ((.packages // []) + $pkgs | unique)' "$settings" > "$settings.tmp" \
+          '.packages = ((.packages // []) + $pkgs | unique)
+           | .defaultProvider = (.defaultProvider // "omlx")
+           | .defaultModel = (.defaultModel // "Qwen3.6-35B-A3B-oQ4e-mtp")
+           | .defaultThinkingLevel = (.defaultThinkingLevel // "medium")
+           | del(.defaultTools)
+           | .thinkingBudgets = ({ minimal: 512, low: 1024, medium: 2048, high: 8192 } * (.thinkingBudgets // {}))' \
+          "$settings" > "$settings.tmp" \
           && mv "$settings.tmp" "$settings"
+      '';
+
+      # Global user-level instructions (~110 tokens) loaded into every Pi session.
+      home.file.".pi/agent/AGENTS.md".text = ''
+        - Search with `rg -n` before reading large files; use `read` with `offset` and `limit` instead of reading whole files over 200 lines.
+        - Before re-reading a file you already read this session, try `vcc_recall` or `rg -n` for the specific symbol.
+        - Use unescaped `|` for alternation in `rg` (`rg -n "foo|bar"`), never `\|`.
+        - For `edit`, always pass `path` as a top-level parameter (`{"path": "...", "edits": [{"oldText": "...", "newText": "..."}]}`), never inside `edits[]`.
+        - Pass quiet flags (`-q` / `--quiet`) to test and build runners, and pipe large command outputs (`git diff`, `git log`) through `rg`, `head`, or `tail`.
+        - Never stage, diff, or list generated build or dependency directories.
       '';
 
       # No-LLM compaction: no summarization prompt reaches the model server,
@@ -38,15 +54,33 @@ in
         debug = false;
         skipForProviders = [ ];
         skipCustomTypes = [ ];
-        trackCommands = [ "docker" "just" "darwin-rebuild" "git" ];
+        trackCommands = [ "cargo" "docker" "just" "darwin-rebuild" "git" ];
       };
 
       home.file.".pi/agent/models.json".source = (pkgs.formats.json { }).generate "pi-models.json" {
         "$schema" = "https://pi.dev/schemas/models.schema.json";
         providers.omlx = {
-          baseUrl = "http://localhost:8000/v1";
+          name = "oMLX (Mac Studio)";
+          baseUrl = "http://skjolds-mac-studio:8000/v1";
           api = "openai-completions";
           apiKey = "omlx"; # dummy key; local server ignores it
+          models = [
+            {
+              id = "Qwen3.6-35B-A3B-oQ4e-mtp";
+              name = "Qwen 3.6 35B-A3B (Mac Studio)";
+              reasoning = true;
+              input = [ "text" "image" ];
+              contextWindow = 122880; # 120 Ki tokens (60 x 2048-token blocks; leaves ~95k working room above Paseo's ~25k base prompt while compacting well below oMLX's 150k cap)
+              maxTokens = 32768;
+              compat = {
+                thinkingFormat = "chat-template";
+                chatTemplateKwargs = {
+                  enable_thinking = { "$var" = "thinking.enabled"; };
+                };
+                thinkingTokenBudgetField = "thinking_budget";
+              };
+            }
+          ];
         };
       };
     })

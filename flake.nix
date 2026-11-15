@@ -12,29 +12,30 @@
 
   outputs = { nix-darwin, home-manager, nix-homebrew, nix-vscode-extensions, iris, ... }:
     let
-      system = "aarch64-darwin";
+      darwinSystem = "aarch64-darwin";
 
-      baseModules = [
+      baseDarwinModules = [
         nix-homebrew.darwinModules.nix-homebrew
         home-manager.darwinModules.home-manager
         {
           nixpkgs.overlays = [
             nix-vscode-extensions.overlays.default
-            (final: prev: { iris = iris.packages.${system}.default; })
+            (final: prev: { iris = iris.packages.${darwinSystem}.default; })
           ];
         }
         ./darwin/configuration.nix
       ];
 
       mkDarwinConfig = extraModules: nix-darwin.lib.darwinSystem {
-        inherit system;
-        modules = baseModules ++ extraModules;
+        system = darwinSystem;
+        modules = baseDarwinModules ++ extraModules;
       };
     in
     {
       darwinConfigurations = {
         personal = mkDarwinConfig [ ./machines/personal.nix ];
         work = mkDarwinConfig [ ./machines/work.nix ];
+        mac-studio = mkDarwinConfig [ ./machines/mac-studio.nix ];
       };
     };
 }

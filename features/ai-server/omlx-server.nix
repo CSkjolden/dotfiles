@@ -318,7 +318,7 @@ in
       rm -f "$(/usr/bin/getconf DARWIN_USER_TEMP_DIR 2>/dev/null)xcrun_db" /private/var/tmp/xcrun_db 2>/dev/null || true
       if [ -d /Applications/Xcode.app ] && sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} /usr/bin/xcrun metal --version >/dev/null 2>&1 \
         && [ -f /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json ] \
-        && ! grep -q "with-custom-kernel" /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json; then
+        && ! ${pkgs.jq}/bin/jq -e '.used_options | index("--with-custom-kernel")' /opt/homebrew/opt/omlx/INSTALL_RECEIPT.json >/dev/null 2>&1; then
         echo >&2 "Rebuilding oMLX with native custom kernels (takes a few minutes)..."
         sudo -u ${user} -H env DEVELOPER_DIR=${xcodeDir} HOMEBREW_NO_AUTO_UPDATE=1 /opt/homebrew/bin/brew reinstall jundot/omlx/omlx --with-custom-kernel \
           || echo >&2 "warning: oMLX custom-kernel rebuild failed; keeping the existing install"

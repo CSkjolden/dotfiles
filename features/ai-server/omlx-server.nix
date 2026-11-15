@@ -20,6 +20,54 @@ let
     fi
   '';
 
+  omlxPython = "/opt/homebrew/opt/omlx/libexec/bin/python";
+
+  omlxServeArgs =
+    [
+      "serve"
+      "--host" aiCfg.host
+      "--port" (toString cfg.port)
+      "--headless"
+      "--model-dir" modelsDir
+      "--paged-ssd-cache-dir" kvCacheDir
+      "--paged-ssd-cache-max-size" "${toString cfg.ssdCacheGb}GB"
+      "--hot-cache-max-size" (if cfg.hotCacheGb > 0 then "${toString cfg.hotCacheGb}GB" else "0")
+    ]
+    ++ lib.optional (cfg.hotCacheGb > 0) "--hot-cache-write-through"
+    ++ [
+      "--initial-cache-blocks" (toString cfg.initialCacheBlocks)
+      "--max-concurrent-requests" (toString cfg.maxConcurrentRequests)
+    ]
+    ++ (if cfg.memoryGuardGb != null
+        then [ "--memory-guard-gb" (toString cfg.memoryGuardGb) ]
+        else [ "--memory-guard" cfg.memoryGuard ]);
+
+  # macOS never grants removable-volume access to system binaries such as /bin/sh and ls, so the
+  # first process that touches the drive must be the oMLX Python itself (which holds the grant).
+  omlxStart = pkgs.writeText "omlx-start.py" ''
+    import json, os, sys, time
+
+    storage, models, kv, key_path = sys.argv[1:5]
+    args = json.loads(sys.argv[5])
+
+    while True:
+        try:
+            if os.path.isdir(storage):
+                os.makedirs(models, exist_ok=True)
+                os.listdir(models)
+                break
+            reason = "not mounted"
+        except OSError as e:
+            reason = f"not readable: {e}"
+        print(f"[omlx] {models} {reason}; waiting...", file=sys.stderr, flush=True)
+        time.sleep(10)
+
+    os.makedirs(kv, exist_ok=True)
+    with open(key_path) as f:
+        key = f.read().strip()
+    os.execv("/opt/homebrew/bin/omlx", ["omlx", *args, "--api-key", key])
+  '';
+
   defaultSettings = {
     version = "1.0";
     server = {
@@ -240,47 +288,20 @@ in
           "/bin/sh"
           "-c"
           ''
-            set -euo pipefail
+            set -eu
 
             if [ ! -d "${aiCfg.storageDir}" ]; then
               /usr/sbin/diskutil mount "${builtins.baseNameOf aiCfg.storageDir}" >/dev/null 2>&1 || true
               sleep 2
             fi
 
-            if [ ! -d "${aiCfg.storageDir}" ]; then
-              echo "[omlx] ${aiCfg.storageDir} not mounted. Waiting..." >&2
-              sleep 10
-              exit 1
-            fi
-
-            mkdir -p /var/lib/omlx "${modelsDir}" "${kvCacheDir}" 2>/dev/null || true
-
-            if ! ls "${modelsDir}" >/dev/null 2>&1; then
-              echo "[omlx] ${modelsDir} not yet readable (waiting for TCC / removable volume authorization)..." >&2
-              sleep 5
-              exit 1
-            fi
-
+            mkdir -p /var/lib/omlx
             if [ ! -f "${apiKeyPath}" ]; then
               /usr/bin/openssl rand -hex 24 > "${apiKeyPath}"
               chmod 600 "${apiKeyPath}"
             fi
 
-            API_KEY="$(cat "${apiKeyPath}")"
-
-            exec /opt/homebrew/bin/omlx serve \
-              --host "${aiCfg.host}" \
-              --port "${toString cfg.port}" \
-              --headless \
-              --model-dir "${modelsDir}" \
-              --paged-ssd-cache-dir "${kvCacheDir}" \
-              --paged-ssd-cache-max-size "${toString cfg.ssdCacheGb}GB" \
-              --hot-cache-max-size "${if cfg.hotCacheGb > 0 then "${toString cfg.hotCacheGb}GB" else "0"}" \
-              ${lib.optionalString (cfg.hotCacheGb > 0) "--hot-cache-write-through"} \
-              --initial-cache-blocks "${toString cfg.initialCacheBlocks}" \
-              --max-concurrent-requests "${toString cfg.maxConcurrentRequests}" \
-              ${if cfg.memoryGuardGb != null then ''--memory-guard-gb "${toString cfg.memoryGuardGb}"'' else ''--memory-guard "${cfg.memoryGuard}"''} \
-              --api-key "$API_KEY"
+            exec ${omlxPython} ${omlxStart} "${aiCfg.storageDir}" "${modelsDir}" "${kvCacheDir}" "${apiKeyPath}" '${builtins.toJSON omlxServeArgs}'
           ''
         ];
         RunAtLoad = true;

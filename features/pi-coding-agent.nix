@@ -61,7 +61,7 @@ in
         "$schema" = "https://pi.dev/schemas/models.schema.json";
         providers.omlx = {
           name = "oMLX (Mac Studio)";
-          baseUrl = "http://skjolds-mac-studio:8000/v1";
+          baseUrl = "http://AI-Studio:8000/v1";
           api = "openai-completions";
           apiKey = "omlx"; # dummy key; local server ignores it
           models = [

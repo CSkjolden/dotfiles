@@ -8,11 +8,13 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     nix-vscode-extensions = { url = "github:nix-community/nix-vscode-extensions"; inputs.nixpkgs.follows = "nixpkgs"; };
     iris = { url = "github:versenilvis/iris"; inputs.nixpkgs.follows = "nixpkgs"; };
+    disko = { url = "github:nix-community/disko"; inputs.nixpkgs.follows = "nixpkgs"; };
   };
 
-  outputs = { nix-darwin, home-manager, nix-homebrew, nix-vscode-extensions, iris, ... }:
+  outputs = { nixpkgs, nix-darwin, home-manager, nix-homebrew, nix-vscode-extensions, iris, disko, ... }:
     let
       darwinSystem = "aarch64-darwin";
+      linuxSystem = "x86_64-linux";
 
       baseDarwinModules = [
         nix-homebrew.darwinModules.nix-homebrew
@@ -36,6 +38,22 @@
         personal = mkDarwinConfig [ ./machines/personal.nix ];
         work = mkDarwinConfig [ ./machines/work.nix ];
         mac-studio = mkDarwinConfig [ ./machines/mac-studio.nix ];
+      };
+
+      nixosConfigurations = {
+        vps = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          modules = [
+            disko.nixosModules.disko
+            home-manager.nixosModules.home-manager
+            {
+              nixpkgs.overlays = [
+                (final: prev: { iris = iris.packages.${linuxSystem}.default; })
+              ];
+            }
+            ./machines/vps.nix
+          ];
+        };
       };
     };
 }

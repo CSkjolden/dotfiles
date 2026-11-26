@@ -20,6 +20,10 @@ sync profile: _git-add _brew-update
         nix run home-manager -- switch --flake .#{{profile}}; \
     fi
 
+# Deploy a NixOS configuration to a remote host from macOS
+deploy host profile="vps": _git-add
+    nix run nixpkgs#nixos-rebuild -- switch --flake .#{{profile}} --target-host {{host}} --build-host {{host}}
+
 # Update nixpkgs (or another flake input) and verify the profile builds, without switching
 update profile input="nixpkgs": _git-add
     nix flake update {{input}}

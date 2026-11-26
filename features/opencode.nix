@@ -12,7 +12,7 @@
           omlx = {
             npm = "@ai-sdk/openai-compatible";
             name = "oMLX (Mac Studio)";
-            options.baseURL = "http://skjolds-mac-studio:8000/v1";
+            options.baseURL = "http://AI-Studio:8000/v1";
           };
         };
       };

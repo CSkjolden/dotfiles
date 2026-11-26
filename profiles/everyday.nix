@@ -7,5 +7,6 @@
     ../features/spotify.nix
     ../features/discord.nix
     ../features/steam.nix
+    ../features/tailscale.nix
   ];
 }

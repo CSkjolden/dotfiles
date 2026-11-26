@@ -1,7 +1,7 @@
 { ... }:
 {
   homebrew.casks = [
-    "dotnet-sdk" # .NET SDK
+    "dotnet-sdk@10" # .NET SDK
     "rider" # JetBrains IDE for dotnet
   ];
 }

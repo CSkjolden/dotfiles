@@ -5,7 +5,6 @@
     ../features/container.nix
     ../features/claude-code.nix
     ../features/copilot-cli.nix
-    ../features/orca.nix
     ../features/paseo.nix
     ../features/pi-coding-agent.nix
   ];
